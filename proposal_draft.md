@@ -2,7 +2,7 @@
 
 ## Introduction
 
-Lock‐free data structures 
+Concurrent data structures in practice are typically classified into two broad categories: those that employ blocking (lock-based) synchronization mechanisms and those that utilize non-blocking, usually lock-free, techniques. 
 
 high contention
 
@@ -16,24 +16,27 @@ correctness implementation
 
 well-formedness
 
-invariant 
+atomic invariant 
 
 ## State of the Art
-
+model checking
 
 ## Background
 
 Rust affine type system ownership
 
-Verus
+Verus 
 efficient SMT encoding
 
 VerusSync
+
+linear ghost state
 
 state machine 
 
 
 ## Approaches
+
 ABA problem 
 
 Michael and Scott queue
