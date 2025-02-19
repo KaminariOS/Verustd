@@ -21,12 +21,16 @@ atomic invariant
 ## State of the Art
 model checking
 
+heroic effort
+
 ## Background
 
 Rust affine type system ownership
 
 Verus 
 efficient SMT encoding
+
+Limitation: currently Verus only supports sequential consistent momory model.
 
 VerusSync
 
