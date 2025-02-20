@@ -27,7 +27,10 @@ heroic effort
 
 Rust affine type system ownership
 
-Verus 
+### Verus 
+
+permission-based reasoning
+
 efficient SMT encoding
 
 Limitation: currently Verus only supports sequential consistent momory model.
