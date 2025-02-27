@@ -21,7 +21,9 @@ verus! {
 
         broadcast use vstd::std_specs::hash::group_hash_axioms;
         contacts.insert(1, 5);
-        assert(contacts@.contains_key(1));
+        assert(contacts[1] == 5);
+        contacts.insert(1, 6);
+        assert(contacts[1] == 6);
         // assert(contacts@["Daniel"] == "798-1364");  
         // println!("{contacts:?}");
         
