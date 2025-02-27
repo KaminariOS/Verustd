@@ -1,9 +1,56 @@
 use builtin_macros::*;
 use vstd::prelude::*;
 use vstd::simple_pptr::PPtr;
+
+use std::collections::HashMap;
+use vstd::relations::total_ordering;
+use vstd::std_specs::hash::HashMapAdditionalSpecFns;
 verus! {
 
     spec fn uninterp_fn(x: u64) -> bool;
+
+    fn macro_test() {
+         let mut index = 0;
+         let len = 11;
+         let v = vec![1];
+         assert(v@[0] == 1);
+    }
+
+    fn hash_set_test() {
+        let mut contacts = HashMap::new();
+
+        broadcast use vstd::std_specs::hash::group_hash_axioms;
+        contacts.insert(1, 5);
+        assert(contacts@.contains_key(1));
+        // assert(contacts@["Daniel"] == "798-1364");  
+        // println!("{contacts:?}");
+        
+    }
+    pub struct BinaryHeap<
+        T
+    > {
+        data: Vec<T>,
+    }
+
+    impl<T: Ord> Default for BinaryHeap<T> {
+    /// Creates an empty `BinaryHeap<T>`.
+    fn default() -> BinaryHeap<T> {
+        BinaryHeap::new()
+    }
+}    
+    impl<T: Ord> BinaryHeap<T> {
+    pub const fn new() -> BinaryHeap<T> {
+        BinaryHeap { data: vec![] }
+    }
+    }
+
+
+    fn test_heap() {
+        // fn compare(a: usize, b: usize) -> bool {
+        //     a > b
+        // }
+        // assert(total_ordering(compare));
+    }
 
     fn pop_test(t: Vec<u64>)
         requires
