@@ -7,7 +7,7 @@
 \usepackage{graphicx}
 \usepackage{textcomp}
 \usepackage{xcolor}
-\usepackage[hidelinks]{hyperref}
+\usepackage[hidelinks,colorlinks=true,linkcolor=blue,citecolor=blue]{hyperref}
 \usepackage[backend=biber]{biblatex}
 \addbibresource{cites.bib}
 
@@ -15,7 +15,7 @@
     T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
 \begin{document}
 
-\title{Verifying Containers in Rust Standard Library 
+\title{Verifying Rust Standard Library 
 % {\footnotesize \textsuperscript{*}Note: Sub-titles are not captured in Xplore andu
 % should not be used}
 % \thanks{Identify applicable funding agency here. If none, delete this.}
@@ -71,12 +71,28 @@ Verus, Rust, Verification
 \end{IEEEkeywords}
 
 \section{Introduction}
-Rust\cite{matsakis2014rust}
+Rust\cite{matsakis2014rust} is a modern programming language with an affine type system that checks memory safety at compile time. Its memory safety guarantees, fearless concurrency and zero-cost abstractions are compelling for systems programming, where safety and performance are both critical. For code whose safety cannot be statically checked by the compiler, Rust provides the \texttt{unsafe} keyword to bypass checks. 
 
+
+Some common idioms include:
+\begin{enumerate}
+    \item \textbf{Minimize and Isolate:} Keep \texttt{unsafe} blocks as small as possible and confined to modules or functions that perform low-level operations. This limits the scope of potential errors and makes auditing easier.
+    \item \textbf{Encapsulate Unsafe in Safe Abstractions:} Hide \texttt{unsafe} code behind a public, safe API. This ensures that the rest of codebase remains in the realm of safe Rust, relying on well-documented interface provided by the unsafe implementation.
+    \item \textbf{Document Invariants and Assumptions:} Clearly state the assumptions the \texttt{unsafe} code makes (such as pointer validity or aliasing rules). Documentation is critical for future maintenance and for reviewers to understand why the code is correct despite bypassing some of Rust’s compile-time checks.
+\end{enumerate}
+
+
+The Rust standard library is a prime example of these idioms in action. Internally, it employs many unsafe operations not only for low level control but also for performance. All public and private API of the standard library are well-documented. Usually a user only needs to interact with the safe API of the standard library.  
+
+
+Because the standard library underpins the entire Rust ecosystem, ensuring its safety and correctness is paramount. Manual auditing by library maintainers, dynamic testing and incomplete static analysis, can reveal the existence of bugs, but insufficient to prove correctness. On the other hand, deductive verification can prove that the implementation refines the specification.           
+
+
+In the paper, we explore how deductive verification can formally prove the functional correctness of the implementation of the Rust standard library.We take a modular approach: write formal specifications for a module based on its informal documentation and supplement proofs to help the verifier prove the refinement theorem. Specifically, we use the state-of-the-art deductive program verification tool Verus. 
+        
 \section{State of the Art}
 
 \subsection{Maintaining the Integrity of the Specifications}
-
 
 \section{Background}
 Before you begin to format your paper, first write and save the content as a 
