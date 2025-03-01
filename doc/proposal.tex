@@ -82,17 +82,16 @@ Some common idioms include:
 \end{enumerate}
 
 
-The Rust standard library is a prime example of these idioms in action. Internally, it employs many unsafe operations not only for low level control but also for performance. All public and private API of the standard library are well-documented. Usually a user only needs to interact with the safe API of the standard library.  
+The Rust standard library(std) is a prime example of these idioms in action. Internally, it employs many unsafe operations not only for low level control but also for performance. All public and private API of std are well-documented. Usually a user only needs to interact with the safe API of std.  
 
 
-Because the standard library underpins the entire Rust ecosystem, ensuring its safety and correctness is paramount. Manual auditing by library maintainers, dynamic testing and incomplete static analysis, can reveal the existence of bugs, but insufficient to prove correctness. On the other hand, deductive verification can prove that the implementation refines the specification.           
+Because std underpins the entire Rust ecosystem, ensuring its safety and correctness is paramount. Manual auditing by library maintainers, dynamic testing and incomplete static analysis, can reveal the existence of bugs, but are insufficient to prove correctness. On the other hand, deductive verification can prove that the implementation refines the specification.           
 
 
-In the paper, we explore how deductive verification can formally prove the functional correctness of the implementation of the Rust standard library.We take a modular approach: write formal specifications for a module based on its informal documentation and supplement proofs to help the verifier prove the refinement theorem. Specifically, we use the state-of-the-art deductive program verification tool Verus. 
+In the paper, we explore how deductive verification can formally prove the functional correctness of the implementation of the Rust standard library. We take a modular approach: write formal specifications for a module based on its informal documentation and supplement proofs to help the verifier prove the refinement theorem. Specifically, we use the state-of-the-art deductive program verification tool Verus. 
         
-\section{State of the Art}
+\section{State of the Art for Verifying Rust Program}
 
-\subsection{Maintaining the Integrity of the Specifications}
 
 \section{Background}
 Before you begin to format your paper, first write and save the content as a 
@@ -103,6 +102,8 @@ proofreading, spelling and grammar.
 Keep your text and graphic files separate until after the text has been 
 formatted and styled. Do not number text heads---{\LaTeX} will do that 
 for you.
+
+\section{}
 
 \subsection{Abbreviations and Acronyms}\label{AA}
 Define abbreviations and acronyms the first time they are used in the text, 
