@@ -91,24 +91,22 @@ Because std underpins the entire Rust ecosystem, ensuring its safety and correct
 In the paper, we explore how deductive verification can formally prove the functional correctness of the implementation of the Rust standard library. We take a modular approach: write formal specifications for a module based on its informal documentation and supplement proofs to help the verifier prove the refinement theorem. Specifically, we use the state-of-the-art deductive program verification tool Verus\cite{verus}. 
         
 \section{State of the Art for Verifying Rust Program}
-Kani\cite{kani} is a model checker for Rust code. It translates Rust program into an intermediate representation for verification and then invokes CBMC(C Bounded Model Checker)\cite{kroening2023cbmccboundedmodel}, which checks the IR for property violations via symbolic execution and SAT solving. Kani emphasizes soundness over completeness. It requires minimal user annotations and enables push-button verification of safety properties. However, it has limited specification expressiveness compared to deductive verification.   
+Formal verification of Rust code is an active research area. However, the majority of existing automated verifiers are unable to reason about unsafe code. 
+
+\textbf{Kani}\cite{kani} is a model checker for Rust code. It translates Rust program into an intermediate representation for verification and then invokes CBMC(C Bounded Model Checker)\cite{kroening2023cbmccboundedmodel}, which checks the IR for property violations via symbolic execution and SAT solving. Kani emphasizes soundness over completeness. It requires minimal user annotations and enables push-button verification of safety properties. However, it has limited specification expressiveness compared to deductive verification.   
+
+\textbf{RefinedRust}\cite{RefinedRust} aims to produce foundational proofs of Rust code in the Coq proof assistant. It is a semi-automated deductive verifier that removes most of Rustc from the TCB(Trusted Computing Base). The verification of a simplified \texttt{Vec} implementation takes 22 minutes CPU on an Apple M1 Max processor because of the blowup caused by the lowering from surface Rust to MIR by Rustc. Currently it does not support concurrency.       
 
 
-
-
-
-
+% VeriFast\cite{foroushaani2022modularformalverificationrust} extends a classic separation‑logic verifier to Rust, requiring detailed manual annotations for memory separation
 
 
 \section{Background}
-Before you begin to format your paper, first write and save the content as a 
-separate text file. Complete all content and organizational editing before 
-formatting. Please note sections \ref{AA}--\ref{SCM} below for more information on 
-proofreading, spelling and grammar.
 
-Keep your text and graphic files separate until after the text has been 
-formatted and styled. Do not number text heads---{\LaTeX} will do that 
-for you.
+\subsection{Rust}
+
+\subsection{Verus}
+
 
 \section{}
 
