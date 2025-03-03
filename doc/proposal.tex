@@ -91,6 +91,13 @@ Because std underpins the entire Rust ecosystem, ensuring its safety and correct
 In the paper, we explore how deductive verification can formally prove the functional correctness of the implementation of the Rust standard library. We take a modular approach: write formal specifications for a module based on its informal documentation and supplement proofs to help the verifier prove the refinement theorem. Specifically, we use the state-of-the-art deductive program verification tool Verus\cite{verus}. 
         
 \section{State of the Art for Verifying Rust Program}
+Kani\cite{kani} is a model checker for Rust code. It translates Rust program into an intermediate representation for verification and then invokes CBMC(C Bounded Model Checker)\cite{kroening2023cbmccboundedmodel}, which checks the IR for property violations via symbolic execution and SAT solving. Kani emphasizes soundness over completeness. It requires minimal user annotations and enables push-button verification of safety properties. However, it has limited specification expressiveness compared to deductive verification.   
+
+
+
+
+
+
 
 
 \section{Background}
