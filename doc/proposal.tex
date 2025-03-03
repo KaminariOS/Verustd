@@ -104,41 +104,29 @@ Formal verification of Rust code is an active research area. However, the majori
 \section{Background}
 
 \subsection{Rust}
+\subsubsection{Ownership policy}
+Rust's ownership policy, enforced by its affine type system requires that a memory object must be exclusively owned by a variable at a time. A memory object can be borrowed as references from the owner temporarily. There can be at most one outstanding mutable references or multiple immutable references at a time. When the ownership policy upholds, Rust ensures spatial and temporal memory safety. For operations that may break the ownership policy but cannot be checked by the compiler, the Rust compiler requires the programmer to use the \texttt{unsafe} keyword to mark such code block and it is the programmer's responsibility to ensure that unsafe code does not invalidate the ownership policy.      
+
+\subsubsection{The Rust Standard Library}
+
 
 \subsection{Verus}
 
+permission-based reasoning
 
-\section{}
+efficient SMT encoding
 
-\subsection{Abbreviations and Acronyms}\label{AA}
-Define abbreviations and acronyms the first time they are used in the text, 
-even after they have been defined in the abstract. Abbreviations such as 
-IEEE, SI, MKS, CGS, ac, dc, and rms do not have to be defined. Do not use 
-abbreviations in the title or heads unless they are unavoidable.
+linear ghost state
 
-\subsection{Approaches}
-\begin{itemize}
-\item Use either SI (MKS) or CGS as primary units. (SI units are encouraged.) English units may be used as secondary units (in parentheses). An exception would be the use of English units as identifiers in trade, such as ``3.5-inch disk drive''.
-\item Avoid combining SI and CGS units, such as current in amperes and magnetic field in oersteds. This often leads to confusion because equations do not balance dimensionally. If you must use mixed units, clearly state the units for each quantity that you use in an equation.
-\item Do not mix complete spellings and abbreviations of units: ``Wb/m\textsuperscript{2}'' or ``webers per square meter'', not ``webers/m\textsuperscript{2}''. Spell out units when they appear in text: ``. . . a few henries'', not ``. . . a few H''.
-\item Use a zero before decimal points: ``0.25'', not ``.25''. Use ``cm\textsuperscript{3}'', not ``cc''.)
-\end{itemize}
+\section{Thread Model}
 
-\subsection{Equations}
-Number equations consecutively. To make your 
-equations more compact, you may use the solidus (~/~), the exp function, or 
-appropriate exponents. Italicize Roman symbols for quantities and variables, 
-but not Greek symbols. Use a long dash rather than a hyphen for a minus 
-sign. Punctuate equations with commas or periods when they are part of a 
-sentence, as in:
-\begin{equation}
-a+b=\gamma\label{eq}
-\end{equation}
 
-Be sure that the 
-symbols in your equation have been defined before or immediately following 
-the equation. Use ``\eqref{eq}'', not ``Eq.~\eqref{eq}'' or ``equation \eqref{eq}'', except at 
-the beginning of a sentence: ``Equation \eqref{eq} is . . .''
+\section{Approach}
+
+\section{Evaluation}
+\section{Plan of Work}
+\section{Who Did What}
+
 
 \subsection{\LaTeX-Specific Advice}
 
