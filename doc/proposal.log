@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023/Debian) (preloaded format=pdflatex 2025.3.4)  4 MAR 2025 09:41
+This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023/Debian) (preloaded format=pdflatex 2025.3.4)  4 MAR 2025 11:36
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -649,12 +649,12 @@ Underfull \hbox (badness 1496) in paragraph at lines 88--89
  []
 
 [2]
-Underfull \hbox (badness 3179) in paragraph at lines 180--181
+Underfull \hbox (badness 3179) in paragraph at lines 183--184
 \OT1/ptm/m/n/10 spec-i-fi-ca-tions, and au-thored the con-cur-rency threat
  []
 
 
-Underfull \hbox (badness 6428) in paragraph at lines 187--187
+Underfull \hbox (badness 6428) in paragraph at lines 190--190
 []\OT1/ptm/m/n/10 Daniel Kroen-ing, Pe-ter Schram-mel, and Michael
  []
 
@@ -675,7 +675,7 @@ LaTeX2e <2023-11-01> patch level 1
 L3 programming layer <2024-01-22>
  ***********
 Package rerunfilecheck Info: File `proposal.out' has not changed.
-(rerunfilecheck)             Checksum: E9B1398FA7DCBD58BC22F63421E9E4E0;2313.
+(rerunfilecheck)             Checksum: 32AD0AD16024F1E2DA57C1276579DF1B;2356.
 Package logreq Info: Writing requests to 'proposal.run.xml'.
 \openout1 = `proposal.run.xml'.
 
@@ -689,7 +689,7 @@ Here is how much of TeX's memory you used:
  1141 hyphenation exceptions out of 8191
  75i,8n,81p,1613b,1343s stack positions out of 10000i,1000n,20000p,200000b,200000s
 </usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy7.pfb></usr/share/texlive/texmf-dist/fonts/type1/urw/courier/ucrb8a.pfb></usr/share/texlive/texmf-dist/fonts/type1/urw/courier/ucrr8a.pfb></usr/share/texlive/texmf-dist/fonts/type1/urw/times/utmb8a.pfb></usr/share/texlive/texmf-dist/fonts/type1/urw/times/utmbi8a.pfb></usr/share/texlive/texmf-dist/fonts/type1/urw/times/utmr8a.pfb></usr/share/texlive/texmf-dist/fonts/type1/urw/times/utmri8a.pfb>
-Output written on proposal.pdf (3 pages, 109431 bytes).
+Output written on proposal.pdf (3 pages, 109920 bytes).
 PDF statistics:
  164 PDF objects out of 1000 (max. 8388607)
  143 compressed objects within 2 object streams
