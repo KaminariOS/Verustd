@@ -32,9 +32,9 @@ Chapel Hill}\\
 huhu8@cs.unc.edu}
 \maketitle
 
-\begin{abstract}
-Rust's \texttt{std::collections} library provides a set of core data structures that are widely used in systems programming. Although Rust's ownership model helps prevent memory-safety errors, it does not alone guarantee full functional correctness or security against logical vulnerabilities. In this project, we propose using Verus, an SMT-based deductive verifier for Rust, to formally specify and verify key operations of \texttt{std::collections}, such as \texttt{Vec} and \texttt{HashMap}. We aim to prove that common operations preserve specified invariants, thus strengthening correctness and security guarantees for downstream Rust applications.
-\end{abstract}
+% \begin{abstract}
+% Rust's \texttt{std::collections} library provides a set of core data structures that are widely used in systems programming. Although Rust's ownership model helps prevent memory-safety errors, it does not alone guarantee full functional correctness or security against logical vulnerabilities. In this project, we propose using Verus, an SMT-based deductive verifier for Rust, to formally specify and verify key operations of \texttt{std::collections}, such as \texttt{Vec} and \texttt{HashMap}. We aim to prove that common operations preserve specified invariants, thus strengthening correctness and security guarantees for downstream Rust applications.
+% \end{abstract}
 
 \begin{IEEEkeywords}
 Verus, Rust, Verification 
@@ -75,7 +75,9 @@ Formal verification of Rust code is an active research area. However, the majori
 
 \subsection{Rust}
 \subsubsection{Ownership policy}
-Rust's ownership policy, enforced by its affine type system requires that a memory object must be exclusively owned by a variable at a time. A memory object can be borrowed as references from the owner temporarily. There can be at most one outstanding mutable references or multiple immutable references at a time. When the ownership policy upholds, Rust ensures spatial and temporal memory safety. For operations that may break the ownership policy but cannot be checked by the compiler, the programmer has to use the \texttt{unsafe} keyword to mark such code block and take on the responsibility to ensure that the unsafe code does not violate Rust's safety invariants(unsound). Otherwise unsound code may cause undefined behaviors(UB).
+Rust's ownership policy, enforced by its affine type system requires that a memory object must be exclusively owned by a variable at a time. A memory object can be borrowed as references from the owner temporarily. There can be at most one outstanding mutable references or multiple immutable references at a time. The ownership policy is checked by the borrow checker in rustc at compile time.
+
+When the ownership policy upholds, Rust ensures spatial and temporal memory safety. For operations that may break the ownership policy but cannot be checked by the compiler, the programmer has to use the \texttt{unsafe} keyword to mark such code block and take on the responsibility to ensure that the unsafe code does not violate Rust's safety invariants(unsound). Otherwise unsound code may cause undefined behaviors(UB).
 
 \subsubsection{The Rust Standard Library}
 Rust’s standard library is built in layers, each designed for different environments and capabilities:
@@ -87,16 +89,15 @@ Rust’s standard library is built in layers, each designed for different enviro
 
 The hierarchical architecture of the Rust standard library, positions it as the foundational pillar of the Rust ecosystem, enabling cross-environment compatibility—from resource-constrained embedded systems to feature-rich application development. Due to its role in managing low-level system interactions and stringent performance requirements, std extensively employs unsafe code blocks. It encapsulates unsafe implementations with a safe public interface as much as possible. Nevertheless, in the past there have been multiple reported Common Vulnerabilities and Exposures (CVEs)\cite{Qwaz_rust-cve} that can be triggered by invoking a safe function from std. For unsafe code in std, the documentation describes the safety invariants required.   
 
+\subsection{Automated Dedutive Verifition}
+Automated deductive verification is a formal method that employs logical inference and automated theorem proving to mathematically establish the correctness of software, hardware, or protocols against specified properties. Unlike testing, which samples executions, or model checking, which explores finite state spaces, deductive verification employs logical deduction base on Hoare logic to prove system adherence to formal specifications exhaustively. It requires annotating code with preconditions, postconditions, and invariants. An automated dedutive verifier generate verification conditions(VC) from the code and annotations automatically and invokes an SMT(satisfiability modulo theories) solver to check the VC.
 
 \subsection{Verus}
-Verus\cite{verus} is ded 
+Verus\cite{verus} is the first deductive Rust verifier that leverages the borrow checker to enable efficient SMT encoding of verification conditions. Its specification and proof language is also based on Rust itself. 
 
+Verus introduces linear ghost types, inspired by the Iris concurrent separation logic\cite{Iris_contributors_Iris} and the affine type system of Rust. Ghost code including specifications and proofs is written alongside executable code but erased after compilation. Verus does not directly support verification of unsafe code, but its ghost objects, states can be used to reasoning about memory permissions and concurrency.  
 
-permission-based reasoning
-
-efficient SMT encoding
-
-linear ghost state
+Verus implements a comprehensive subset of Rust's language features and has demonstrated scalability in large-scale, complex system architectures\cite{verus_publications}.
 
 \section{Threat Model}
 We assume that an adversary could attempt to exploit logical flaws in \texttt{std::collections} if a data structure behaves inconsistently under concurrent usage or corner-case operations. Although Rust's borrow checker already prevents many common memory safety errors (such as data races and use-after-free), it does not guarantee functional correctness or invariants related to data structure behavior. Consequently, our verification targets a class of attacks in which incorrect library logic might be leveraged to corrupt data or cause unexpected behavior.
