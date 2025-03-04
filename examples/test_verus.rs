@@ -54,6 +54,14 @@ verus! {
         // assert(total_ordering(compare));
     }
 
+    fn test_assert(a: usize) {
+        if a != 4 {
+            return
+        }
+        // assert_eq!(a, 4); 
+        assert(a == 4);
+    }
+
     fn pop_test(t: Vec<u64>)
         requires
             t.len() > 0,
