@@ -46,9 +46,9 @@ Rust\cite{matsakis2014rust} is a modern programming language with an affine type
 
 Some common idioms include:
 \begin{enumerate}
-    \item \textbf{Minimize and Isolate:} Keep \texttt{unsafe} blocks as small as possible and confined to modules or functions that perform low-level operations. This limits the scope of potential errors and makes auditing easier.
-    \item \textbf{Encapsulate Unsafe in Safe Abstractions:} Hide \texttt{unsafe} code behind a public, safe API. This ensures that the rest of codebase remains in the realm of safe Rust, relying on well-documented interface provided by the unsafe implementation.
-    \item \textbf{Document Invariants and Assumptions:} Clearly state the assumptions the \texttt{unsafe} code makes (such as pointer validity or aliasing rules). Documentation is critical for future maintenance and for reviewers to understand why the code is correct despite bypassing some of Rust’s compile-time checks.
+    \item \textbf{Minimize and Isolate:} Keep \texttt{unsafe} blocks small and confined to modules or functions that perform low-level operations. 
+    \item \textbf{Encapsulate Unsafe in Safe Abstractions:} Hide \texttt{unsafe} code behind a public, safe API. 
+    \item \textbf{Document Invariants and Assumptions:} Clearly state the assumptions(such as pointer validity or aliasing rules). 
 \end{enumerate}
 
 
@@ -65,7 +65,7 @@ Formal verification of Rust code is an active research area. However, the majori
 
 \textbf{Kani}\cite{kani} is a model checker for Rust code. It translates Rust program into an intermediate representation for verification and then invokes CBMC(C Bounded Model Checker)\cite{kroening2023cbmccboundedmodel}, which checks the IR for property violations via symbolic execution and SAT solving. Kani emphasizes soundness over completeness. It requires minimal user annotations and enables push-button verification of safety properties. However, it has limited specification expressiveness compared to deductive verification.   
 
-\textbf{RefinedRust}\cite{RefinedRust} aims to produce foundational proofs of Rust code in the Coq proof assistant. It is a semi-automated deductive verifier that removes most of Rustc from the TCB(Trusted Computing Base). The verification of a simplified \texttt{Vec} implementation takes 22 minutes CPU on an Apple M1 Max processor due to the blow-up caused by the lowering from surface Rust to MIR by Rustc. Currently, it does not support concurrency.       
+\textbf{RefinedRust}\cite{RefinedRust} aims to produce foundational proofs of Rust code in the Coq proof assistant. It is a semi-automated deductive verifier that removes most of Rustc from the TCB(Trusted Computing Base). The verification of a simplified \texttt{Vec} implementation takes 22 minutes CPU time on an Apple M1 Max processor due to the blowup caused by the lowering from surface Rust to MIR by Rustc. Currently, it does not support concurrency.       
 
 
 % VeriFast\cite{foroushaani2022modularformalverificationrust} extends a classic separation‑logic verifier to Rust, requiring detailed manual annotations for memory separation
