@@ -56,8 +56,9 @@ verus! {
 
     fn test_assert(a: usize) {
         if a != 4 {
-            return
+            loop {}
         }
+        
         // assert_eq!(a, 4); 
         assert(a == 4);
     }
