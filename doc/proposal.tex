@@ -46,24 +46,24 @@ Rust\cite{matsakis2014rust} is a modern programming language with an affine type
 
 Some common idioms include:
 \begin{enumerate}
-    \item \textbf{Minimize and Isolate:} Keep \texttt{unsafe} blocks as small as possible and restricted to modules or functions that perform low-level operations. This limits the scope of potential errors and makes auditing easier.
-    \item \textbf{Encapsulate Unsafe in Safe Abstractions:} Hide \texttt{ Unsafe} code behind a public, safe API. This ensures that the rest of the codebase remains in the safe Rust realm, relying on the well-documented interface provided by the unsafe implementation.
-    \item \textbf{Document Invariants and Assumptions:} Clearly state the assumptions the \texttt{unsafe} code makes (such as pointer validity or aliasing rules). Documentation is critical for future maintenance and for reviewers to understand why the code is correct despite bypassing some of the Rust compile time checks.
+    \item \textbf{Minimize and Isolate:} Keep \texttt{unsafe} blocks as small as possible and confined to modules or functions that perform low-level operations. This limits the scope of potential errors and makes auditing easier.
+    \item \textbf{Encapsulate Unsafe in Safe Abstractions:} Hide \texttt{unsafe} code behind a public, safe API. This ensures that the rest of codebase remains in the realm of safe Rust, relying on well-documented interface provided by the unsafe implementation.
+    \item \textbf{Document Invariants and Assumptions:} Clearly state the assumptions the \texttt{unsafe} code makes (such as pointer validity or aliasing rules). Documentation is critical for future maintenance and for reviewers to understand why the code is correct despite bypassing some of Rust’s compile-time checks.
 \end{enumerate}
 
 
 The Rust standard library(std) is a prime example of these idioms in action. Internally, it employs many unsafe operations not only for low-level control but also for performance. All public and private APIs of std are well documented. Usually a user only needs to interact with the safe API of std.  
 
 
-Because std supports the entire Rust ecosystem, ensuring its safety and correctness is paramount. Manual auditing by library maintainers, dynamic testing and incomplete static analysis can reveal the existence of bugs, but are insufficient to prove correctness. However, deductive verification can prove that the implementation refines the specification.           
+Because std underpins the entire Rust ecosystem, ensuring its safety and correctness is paramount. Manual auditing by library maintainers, dynamic testing and incomplete static analysis can reveal the existence of bugs, but are insufficient to prove correctness. On the other hand, deductive verification can prove that the implementation refines the specification.           
 
 
 In the paper, we explore how deductive verification can formally prove the functional correctness of the implementation of the Rust standard library. We take a modular approach: write formal specifications for a module based on its informal documentation and supplement proofs to help the verifier prove the refinement theorem. Specifically, we use the state-of-the-art deductive program verification tool Verus\cite{verus}. 
         
 \section{State of the Art for Verifying Rust Program}
-Formal verification of Rust code is an active research area. However, most existing automated verifiers cannot reason about unsafe code. 
+Formal verification of Rust code is an active research area. However, the majority of existing automated verifiers are unable to reason about unsafe code. 
 
-\textbf{Kani}\cite{kani} is a model checker for Rust code. Translates the Rust program into an intermediate representation for verification and then invokes CBMC (C bounded model checker)\cite{kroening2023cbmccboundedmodel}, which checks the IR for property violations by symbolic execution and SAT solving. Kani emphasizes soundness over completeness. It requires minimal user annotations and enables push-button verification of safety properties. However, it has limited specification expressiveness compared to deductive verification.   
+\textbf{Kani}\cite{kani} is a model checker for Rust code. It translates Rust program into an intermediate representation for verification and then invokes CBMC(C Bounded Model Checker)\cite{kroening2023cbmccboundedmodel}, which checks the IR for property violations via symbolic execution and SAT solving. Kani emphasizes soundness over completeness. It requires minimal user annotations and enables push-button verification of safety properties. However, it has limited specification expressiveness compared to deductive verification.   
 
 \textbf{RefinedRust}\cite{RefinedRust} aims to produce foundational proofs of Rust code in the Coq proof assistant. It is a semi-automated deductive verifier that removes most of Rustc from the TCB(Trusted Computing Base). The verification of a simplified \texttt{Vec} implementation takes 22 minutes CPU on an Apple M1 Max processor due to the blow-up caused by the lowering from surface Rust to MIR by Rustc. Currently, it does not support concurrency.       
 
@@ -75,29 +75,30 @@ Formal verification of Rust code is an active research area. However, most exist
 
 \subsection{Rust}
 \subsubsection{Ownership policy}
-Rust's ownership policy, enforced by its affine-type system, requires that a memory object must be exclusively owned by a variable at a time. A memory object can be borrowed temporarily as references from the owner. There can be at most one outstanding mutable reference or multiple immutable references at a time. When the ownership policy is respected, Rust ensures spatial and temporal memory safety. For operations that may break the ownership policy but cannot be checked by the compiler, the Rust compiler requires the programmer to use the \texttt{unsafe} keyword to mark such code block and it is the programmer's responsibility to ensure that unsafe code does not invalidate the ownership policy.      
+Rust's ownership policy, enforced by its affine type system requires that a memory object must be exclusively owned by a variable at a time. A memory object can be borrowed as references from the owner temporarily. There can be at most one outstanding mutable references or multiple immutable references at a time. When the ownership policy upholds, Rust ensures spatial and temporal memory safety. For operations that may break the ownership policy but cannot be checked by the compiler, the programmer has to use the \texttt{unsafe} keyword to mark such code block and take on the responsibility to ensure that the unsafe code does not violate Rust's safety invariants(unsound). Otherwise unsound code may cause undefined behaviors(UB).
+
 \subsubsection{The Rust Standard Library}
-The Rust Standard Library (\texttt{std}) provides essential building blocks for system programming, such as basic I/O, concurrency primitives, and fundamental data types. Within the standard library, the \texttt{std::collections} module offers a suite of commonly used data structures, including \texttt{Vec} (a dynamic array), \texttt{BTreeMap}, \texttt{HashMap}, \texttt{LinkedList}, and more. These collections are implemented with Rust’s ownership policy in mind, often using \texttt{ unsafe} internals to achieve performance while maintaining safe interfaces. The library also includes synchronization primitives such as \texttt{Mutex} and \texttt{RwLock} in \texttt{std::sync}, which, together with Rust's borrowing rules, enable higher-level concurrency patterns without exposing end-users to data races.  
+Rust’s standard library is built in layers, each designed for different environments and capabilities:
+\begin{itemize}
+        \item \textbf{core} The \texttt{core} crate is the foundation of Rust. It contains the minimal set of language features and traits that work in any environment—even on bare metal without an operating system.
+        \item \textbf{alloc} The \texttt{alloc} crate builds on core by adding dynamic memory allocation support. It provides heap-based data structures such as \texttt{Box}, \texttt{Vec}, \texttt{String}, and reference-counted pointers (\texttt{Rc}/\texttt{Arc}).
+        \item \textbf{std} The \texttt{std} builds on \texttt{core} and \texttt{alloc} to provide OS-dependent features (threads, I/O, networking).
+\end{itemize}
 
-Our work focuses on verifying subsets of \texttt{std::collections} (such as \texttt{BTreeMap} or \texttt{Vec}) using formal methods, thus providing stronger guarantees of safety and correctness than can be offered by Rust’s compiler checks alone.
-
-
-
-\subsection{Verus and Rust’s Affine Type System}
-
-Verus builds on Rust's affine (ownership-based) system to streamline the verification of functional correctness. In Rust, each piece of data has either a single mutable owner or multiple read-only owners at any point in time, preventing data races by design. Verus encodes these ownership guarantees into a framework \emph{permission-based reasoning}, where references carry logical 'tokens' that indicate whether they grant exclusive write access or shared read access. This approach allows Verus to rely on the checks of the Rust compiler for memory safety, so many low-level properties (for example, absence of data races, valid pointer usage) come 'free'. Consequently, users can focus on higher-level correctness, such as data structure invariants or algorithmic properties.
-
-Beyond permission reasoning, Verus employs an \emph{efficient SMT encoding} that translates Rust code plus embedded specifications (ghost variables, loop invariants, etc.) into logical formulas for an SMT solver. Using the static guarantees of the Rust-type system, Verus can generate simpler verification conditions compared to languages with weaker memory models. This often results in faster solver times and less manual annotation overhead than fully general deductive verifiers would require.
-
-Another key feature is \emph{linear ghost state}, which allows authors to write auxiliary 'ghost' code that does not compile to machine code but encodes ephemeral invariants or transformations. Unlike Rust's linear types, ghost variables cannot be duplicated or aliased in ways that violate logical constraints. This state can record information on the internal changes of a data structure over time, guiding the solver to prove that all required invariants hold after each operation. Because ghost code does not affect runtime behavior, developers are free to add detailed proof hints without performance penalties.
-
-In general, by unifying the Rust ownership model with permission-based reasoning, efficient SMT encoding, and linear ghost state, Verus offers a relatively automatic path to verifying higher-level correctness properties of Rust programs while relying on the robust compiler foundation for memory safety.
+The hierarchical architecture of the Rust standard library, positions it as the foundational pillar of the Rust ecosystem, enabling cross-environment compatibility—from resource-constrained embedded systems to feature-rich application development. Due to its role in managing low-level system interactions and stringent performance requirements, std extensively employs unsafe code blocks. It encapsulates unsafe implementations with a safe public interface as much as possible. Nevertheless, in the past there have been multiple reported Common Vulnerabilities and Exposures (CVEs)\cite{Qwaz_rust-cve} that can be triggered by invoking a safe function from std. For unsafe code in std, the documentation describes the safety invariants required.   
 
 
+\subsection{Verus}
+Verus\cite{verus} is 
 
+
+permission-based reasoning
+
+efficient SMT encoding
+
+linear ghost state
 
 \section{Threat Model}
-
 We assume that an adversary could attempt to exploit logical flaws in \texttt{std::collections} if a data structure behaves inconsistently under concurrent usage or corner-case operations. Although Rust's borrow checker already prevents many common memory safety errors (such as data races and use-after-free), it does not guarantee functional correctness or invariants related to data structure behavior. Consequently, our verification targets a class of attacks in which incorrect library logic might be leveraged to corrupt data or cause unexpected behavior.
 
 \begin{itemize}
