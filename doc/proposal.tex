@@ -97,22 +97,22 @@ Verus\cite{verus} is the first deductive Rust verifier that leverages the borrow
 
 Verus introduces linear ghost types, inspired by the Iris concurrent separation logic\cite{Iris_contributors_Iris} and the affine type system of Rust. Ghost code including specifications and proofs is written alongside executable code but erased after compilation. Verus does not directly support verification of unsafe code, but its ghost objects, states can be used to reasoning about memory permissions and concurrency.  
 
-Verus implements a comprehensive subset of Rust's language features and has demonstrated scalability in large-scale, complex system architectures\cite{verus_publications}.
+Verus implements a comprehensive subset of Rust's language features and has demonstrated scalability in large-scale, complex systems\cite{verus_publications}.
 
 \section{Threat Model}
-We assume that an adversary could attempt to exploit logical flaws in \texttt{std::collections} if a data structure behaves inconsistently under concurrent usage or corner-case operations. Although Rust's borrow checker already prevents many common memory safety errors (such as data races and use-after-free), it does not guarantee functional correctness or invariants related to data structure behavior. Consequently, our verification targets a class of attacks in which incorrect library logic might be leveraged to corrupt data or cause unexpected behavior.
+We assume that while an adversary is restricted to writing safe code, they can still invoke any safe public standard functions with arbitrary arguments. Although Rust's borrow checker already prevents many common memory safety errors (such as data races and use-after-free), it does not guarantee functional correctness or invariants related to data structure behavior. Consequently, our verification targets a class of attacks in which incorrect library logic might be leveraged to corrupt data or cause unexpected behavior.
 
 \begin{itemize}
 \item \textbf{Data-Structure Invariant Violations:} An adversary may trigger key ordering violations or disrupt node relationships in a \texttt{BTreeMap} (e.g., by exploiting an unverified insertion routine that leads to a broken internal structure). If such structural invariants are not formally proven, an attacker could cause lookups or iterations to fail unexpectedly.
 \item \textbf{Potential Concurrency Bugs:} If we pursue partial concurrency verification, adversaries might exploit incomplete synchronization mechanisms or overlooked atomic guarantees. Race conditions could violate internal invariants, allowing inconsistent reads or writes that undermine correctness or even create denial-of-service conditions.
 \end{itemize}
 
-We do not address hardware-level attacks, compiler bugs, or misuse of \texttt{unsafe} Rust blocks external to the data structures being verified. These lie outside our verification scope, as our project focuses on proving correctness within safe Rust and the formal methodology provided by Verus. However, ensuring strong functional invariants is an essential step in making Rust collection libraries more robust against adversarial misuse.
+We do not address hardware-level attacks, compiler bugs, or misuse of \texttt{unsafe} Rust blocks external to the data structures being verified. These lie outside our verification scope, as our project focuses on proving correctness within safe Rust and a subset of unsafe Rust by modeling them with axioms. However, ensuring strong functional invariants is an essential step in making Rust standard libraries more robust against adversarial misuse.
 
 \section{Approach}
 
 \subsection{Specification}
-To verify \texttt{Vec} and \texttt{BTreeMap}, we will introduce a combination of preconditions, postconditions, loop invariants, and ghost variables directly into their Rust implementations. For example, \texttt{BTreeMap::insert (key, value)} must preserve order and maintain a valid tree structure to ensure correct searches and iterations. Meanwhile, rebalancing or node-splitting operations must uphold parent-child relationships so that the tree remains valid at every intermediate step. To capture invariants beyond the native checks of Rust, we rely on ghost variables and lemmas, which allow us to encode properties that do not exist at run-time but guide the verifier in proving functional correctness. In any concurrent scenarios, these same ghost annotations can help formalize atomic invariants or concurrency-related postconditions.
+To verify \texttt{Vec} other data structures, we will introduce a combination of preconditions, postconditions, loop invariants, and ghost variables directly into their Rust implementations. For example, \texttt{BTreeMap::insert (key, value)} must preserve order and maintain a valid tree structure to ensure correct searches and iterations. Meanwhile, rebalancing or node-splitting operations must uphold parent-child relationships so that the tree remains valid at every intermediate step. To capture invariants beyond the native checks of Rust, we rely on ghost variables and lemmas, which allow us to encode properties that do not exist at run-time but guide the verifier in proving functional correctness. In any concurrent scenarios, these same ghost annotations can help formalize atomic invariants or concurrency-related postconditions.
 
 \subsection{SMT-Based Deductive Verification}
 
@@ -137,13 +137,11 @@ For the final submission, we plan to present a set of verified operations in \te
 \noindent\textbf{Weeks 1--8 (Completed):}
 \begin{itemize}
 \item Verus was installed and tested with small Rust examples.
-\item Explored the feasibility of verifying \texttt{HashMap} before pivoting to \texttt{BTreeMap}.
-\item Drafted initial specs for \texttt{Vec} and simple B-tree structures.
 \end{itemize}
 
 \noindent\textbf{Week 9--10:}
 \begin{itemize}
-\item Expand annotations for core \texttt{BTreeMap} operations (insert/remove).
+\item Model the allocator APIs with axioms
 \item Resolve any immediate solver errors and refine the approach as needed.
 \item Begin documentation for the final paper.
 \end{itemize}
@@ -182,7 +180,7 @@ For the final submission, we plan to present a set of verified operations in \te
 \section{Who Did What}
 \begin{itemize}
 \item \textbf{Kosumi Chan:} Investigated the background on concurrent separation logic, refined approach for \texttt{BTreeMap} specifications, and authored the concurrency threat model.
-\item \textbf{Hu Guo:} Explored Verus' use of Rust's affine-type system, implemented initial verification of \texttt{Vec} operations, and drafted a pivot strategy from \texttt{HashMap} to \texttt{BTreeMap}.
+\item \textbf{Hu Guo:} Explored Verus' use of Rust's affine-type system, implemented initial verification of \texttt{Vec} operations, and drafted a pivot strategy for \texttt{BTreeMap}.
 \end{itemize}
 
 
