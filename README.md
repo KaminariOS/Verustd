@@ -1,5 +1,12 @@
 # Verust: Verifying Rust Standard Library
 
+## Running Verification
+
+To run verification, invoke Verus with the crate-type library on the `src/lib.rs` file:
+
+```
+$ verus --crate-type=lib src/lib.rs
+```
 ## Reference
 1. [Verus Doc](https://verus-lang.github.io/verus/guide/)
 1. [Vstd doc](https://verus-lang.github.io/verus/verusdoc/vstd/)

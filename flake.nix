@@ -51,6 +51,7 @@
         pinnedVerus.verus
         pinnedVerus.line-count
         pinnedVerus.vargo
+        pinnedRust
 
         # pkgs.mars-research.mars-tools
       ] ++ (with pkgs; [
