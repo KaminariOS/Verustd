@@ -93,7 +93,7 @@ The hierarchical architecture of the Rust standard library, positions it as the 
 Automated deductive verification is a formal method that employs logical inference and automated theorem proving to mathematically establish the correctness of software, hardware, or protocols against specified properties. Unlike testing, which samples executions, or model checking, which explores finite state spaces, deductive verification employs logical deduction base on Hoare logic to prove system adherence to formal specifications exhaustively. It requires annotating code with preconditions, postconditions, and invariants. An automated dedutive verifier generate verification conditions(VC) from the code and annotations automatically and invokes an SMT(satisfiability modulo theories) solver to check the VC.
 
 \subsection{Verus}
-Verus\cite{verus} is the first deductive Rust verifier that leverages the borrow checker to enable efficient SMT encoding of verification conditions. Its specification and proof language is also based on Rust itself. 
+Verus\cite{verus} is the first deductive Rust verifier that leverages the borrow checker to simplify SMT encoding of verification conditions. Its specification and proof language is also based on Rust itself. 
 
 Verus introduces linear ghost types, inspired by the Iris concurrent separation logic\cite{Iris_contributors_Iris} and the affine type system of Rust. Ghost code including specifications and proofs is written alongside executable code but erased after compilation. Verus does not directly support verification of unsafe code, but its ghost objects, states can be used to reasoning about memory permissions and concurrency.  
 
