@@ -6,6 +6,7 @@ use alloc::alloc::{Allocator, Global, Layout};
 
 verus!{
 
+// A verified version of usizeNoHighBit in core 
 struct Cap(usize);
 
 #[verifier::inline]
@@ -14,6 +15,7 @@ pub open spec fn usizeNoHighBit(x: usize) -> bool {
 }
 
 impl Cap {
+    // This is only safe if the precondition is satisfied. 
     pub const fn new_verified(x: usize) -> Self 
         requires usizeNoHighBit(x)
     {
