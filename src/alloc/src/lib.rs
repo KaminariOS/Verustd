@@ -55,6 +55,7 @@
 //! [`Cell`]: core::cell
 //! [`Rc`]: rc
 //! [`RefCell`]: core::cell
+extern crate alloc;
 pub mod collections;
 
 mod raw_vec;

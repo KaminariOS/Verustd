@@ -1,4 +1,9 @@
 use vstd::prelude::*;
+
+// Later need to replace these imports with imports from alloc_verified and core_verifed
+use core::marker::PhantomData;
+use alloc::alloc::{Allocator, Global, Layout};
+
 verus!{
 
 struct Cap(usize);
@@ -9,7 +14,7 @@ pub open spec fn usizeNoHighBit(x: usize) -> bool {
 }
 
 impl Cap {
-    pub fn new(x: usize) -> Self 
+    pub const fn new_verified(x: usize) -> Self 
         requires usizeNoHighBit(x)
     {
         Self(x)
@@ -21,5 +26,18 @@ impl Cap {
         }
 }
 
+// const ZERO_CAP: Cap = Cap::new_verified(usize::MAX);
+fn get() -> Cap {
+    Cap::new_verified(0)
+}
+
+struct RawVecInner<T>(T);
+
+// Verus does not support default type param yet so no Allocator = Global
+pub(crate) struct RawVec<T, A: Allocator> {
+    inner: RawVecInner<A>,
+    _marker: PhantomData<T>,
+}
 
 }
+
