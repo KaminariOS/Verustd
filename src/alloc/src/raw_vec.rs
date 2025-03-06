@@ -28,8 +28,10 @@ impl Cap {
         }
 }
 
+// Unfortunely Verus does not support this at the moment 
 // const ZERO_CAP: Cap = Cap::new_verified(usize::MAX);
-fn get() -> Cap {
+
+const fn ZERO_CAP() -> Cap {
     Cap::new_verified(0)
 }
 
