@@ -55,6 +55,10 @@
 //! [`Cell`]: core::cell
 //! [`Rc`]: rc
 //! [`RefCell`]: core::cell
+
+#![feature(alloc_layout_extra)]
+#![feature(allocator_api)]
+
 extern crate alloc;
 pub mod collections;
 
