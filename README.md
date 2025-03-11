@@ -15,3 +15,4 @@ $ verus --crate-type=lib src/lib.rs
 1. [The Rust Security Advisory Database](https://rustsec.org/advisories/)
 1. [Too many lists](https://rust-unofficial.github.io/too-many-lists/fifth-miri.html)
 1. [Rustonomicon](https://doc.rust-lang.org/nomicon/vec/vec.html)
+1. [Systems Verification](https://tchajed.github.io/sys-verif-fa24/)
