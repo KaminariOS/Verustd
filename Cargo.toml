@@ -7,3 +7,4 @@ edition = "2021"
 builtin_macros = { git = "https://github.com/verus-lang/verus", branch = "main" }
 builtin = { git = "https://github.com/verus-lang/verus", branch = "main" }
 vstd = { git = "https://github.com/verus-lang/verus", branch = "main" }
+verified_lib = { path = "../verified_lib" }

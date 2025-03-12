@@ -2,37 +2,48 @@
   description = "Atmosphere";
 
   inputs = {
-    mars-std.url = "github:mars-research/mars-std";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+
+    rust-overlay = {
+      url = "github:oxalica/rust-overlay";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    flake-utils.url = "github:numtide/flake-utils";
     crane = {
       url = "github:ipetkov/crane";
-      inputs.nixpkgs.follows = "mars-std/nixpkgs";
-      inputs.flake-utils.follows = "mars-std/flake-utils";
-      inputs.flake-compat.follows = "mars-std/flake-compat";
+      # inputs.nixpkgs.follows = "mars-std/nixpkgs";
+      # inputs.flake-utils.follows = "mars-std/flake-utils";
+      # inputs.flake-compat.follows = "mars-std/flake-compat";
     };
     verus = {
-      url = "github:mars-research/verus/mars";
-      inputs.nixpkgs.follows = "mars-std/nixpkgs";
-      inputs.flake-utils.follows = "mars-std/flake-utils";
-      inputs.flake-compat.follows = "mars-std/flake-compat";
-      inputs.crane.follows = "crane";
+      url = "github:KaminariOS/verus/flakey";
+      # inputs.nixpkgs.follows = "mars-std/nixpkgs";
+      # inputs.flake-utils.follows = "mars-std/flake-utils";
+      # inputs.flake-compat.follows = "mars-std/flake-compat";
+      # inputs.crane.follows = "crane";
     };
   };
 
-  outputs = { self, mars-std, crane, verus, ... }: let
+  outputs = { nixpkgs, flake-utils, rust-overlay, crane, verus, ... }: let
     supportedSystems = [ "x86_64-linux" "aarch64-linux" "aarch64-darwin" ];
-  in mars-std.lib.eachSystem supportedSystems (system: let
-    pkgs = mars-std.legacyPackages.${system};
+  in flake-utils.lib.eachSystem supportedSystems (system: let
+    pkgs = import nixpkgs {
+      inherit system;
+      overlays = [
+        rust-overlay.overlays.default
+      ];
+    };
     inherit (pkgs) lib;
-    x86Pkgs = mars-std.legacyPackages.x86_64-linux;
+    x86Pkgs = nixpkgs.legacyPackages.x86_64-linux;
     x86Tools = pkgs.pkgsCross.gnu64;
 
     pinnedRust = pkgs.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
-    rustPlatform = pkgs.makeRustPlatform {
-      rustc = pinnedRust;
-      cargo = pinnedRust;
-    };
+    # rustPlatform = pkgs.makeRustPlatform {
+    #   rustc = pinnedRust;
+    #   cargo = pinnedRust;
+    # };
 
-    craneLib = (crane.mkLib pkgs).overrideToolchain pinnedRust;
+    # craneLib = (crane.mkLib pkgs).overrideToolchain pinnedRust;
 
     pinnedVerus = verus.packages.${system};
 
@@ -47,14 +58,19 @@
   in {
     devShell = mkShell {
       nativeBuildInputs = [
-        # pinnedRust
-        pinnedVerus.verus
+        pinnedVerus.verus-alloc
         pinnedVerus.line-count
         pinnedVerus.vargo
         pinnedRust
+        
 
         # pkgs.mars-research.mars-tools
       ] ++ (with pkgs; [
+            rustup
+    #         rust-bin.nightly."2024-11-01".default.override {
+    #     extensions = ["rustc-dev" "rust-src" "rust-analyzer-preview" ];
+    #   targets = [ "x86_64-unknown-linux-gnu" ];
+    # }
         # llvmPackages_14.bintools
         # llvmPackages_14.llvm
         #
