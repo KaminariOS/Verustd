@@ -7,6 +7,21 @@ To run verification, invoke Verus with the crate-type library on the `src/lib.rs
 ```
 $ verus --crate-type=lib src/lib.rs
 ```
+## Cross-crate verification
+Currently, Verus works by invoking `rustc` and [Cargo support](https://github.com/verus-lang/verus/pull/1475) is on the way. 
+
+To support cross-crate verification, we need to run commands like these:
+
+For the lib crate
+```
+rust_verify --crate-type=lib --export vl.vir src/lib.rs
+```
+
+For the main crate
+```
+rust_verify src/main.rs --extern=verified_lib -L target/debug/deps --import verified_lib=../verified_lib/vl.vir
+```
+
 ## Reference
 1. [Verus Doc](https://verus-lang.github.io/verus/guide/)
 1. [Vstd doc](https://verus-lang.github.io/verus/verusdoc/vstd/)
