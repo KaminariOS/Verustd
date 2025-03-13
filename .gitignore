@@ -10,3 +10,5 @@
 *.out
 *.run.xml
 *.synctex.gz
+**/target
+

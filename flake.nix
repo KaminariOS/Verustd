@@ -20,11 +20,11 @@
       # inputs.nixpkgs.follows = "mars-std/nixpkgs";
       # inputs.flake-utils.follows = "mars-std/flake-utils";
       # inputs.flake-compat.follows = "mars-std/flake-compat";
-      # inputs.crane.follows = "crane";
+      inputs.crane.follows = "crane";
     };
   };
 
-  outputs = { nixpkgs, flake-utils, rust-overlay, crane, verus, ... }: let
+  outputs = { nixpkgs, flake-utils, rust-overlay, verus, ... }: let
     supportedSystems = [ "x86_64-linux" "aarch64-linux" "aarch64-darwin" ];
   in flake-utils.lib.eachSystem supportedSystems (system: let
     pkgs = import nixpkgs {
@@ -61,12 +61,12 @@
         pinnedVerus.verus-alloc
         pinnedVerus.line-count
         pinnedVerus.vargo
-        pinnedRust
+        # pinnedRust
         
 
         # pkgs.mars-research.mars-tools
       ] ++ (with pkgs; [
-            rustup
+            # rustup
     #         rust-bin.nightly."2024-11-01".default.override {
     #     extensions = ["rustc-dev" "rust-src" "rust-analyzer-preview" ];
     #   targets = [ "x86_64-unknown-linux-gnu" ];
@@ -114,12 +114,22 @@
         # (mkCargoShim "gdb")
       ]);
 
-      buildInputs = [ pkgs.openssl ];
+      # buildInputs = [ pkgs.openssl ];
 
-      RUSTC_BOOTSTRAP = "1";
+      # RUSTC_BOOTSTRAP = "1";
 
       # Used by build-tool
-      GRUB_X86_MODULES = "${x86Pkgs.grub2}/lib/grub/i386-pc";
+      # GRUB_X86_MODULES = "${x86Pkgs.grub2}/lib/grub/i386-pc";
+
+      # For vstd_build
+      #RUST_SYSROOT = pinnedRust;
+
+      # For rust_verify
+      shellHook = ''
+        export LD_LIBRARY_PATH="${pinnedRust}/lib";
+      '' + lib.optionalString pkgs.stdenv.isDarwin ''
+        export DYLD_LIBRARY_PATH="${pinnedRust}/lib";
+      '';
     };
   });
 }
