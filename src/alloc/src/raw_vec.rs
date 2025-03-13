@@ -1,28 +1,83 @@
 use vstd::prelude::*;
 use vstd::simple_pptr::{PPtr, PointsTo};
+use vstd::raw_ptr::*;
+use vstd::layout::*;
 
-use alloc::alloc::handle_alloc_error;
+// use alloc::alloc::handle_alloc_error;
 // Later need to replace these imports with imports from alloc_verified and core_verifed
 use core::marker::PhantomData;
 use core::mem::{size_of, align_of, MaybeUninit, ManuallyDrop};
 use core::ptr::{self, NonNull, Unique};
 use alloc::alloc::{Allocator, Global, Layout};
 
-use core::{cmp, hint};
+use core::cmp;
 use alloc::collections::TryReserveError;
 use alloc::collections::TryReserveErrorKind::*;
 
 verus!{
+ #[verifier(external_body)]
+fn assert_dyn(b: bool)
+    ensures
+        b,
+{
+    assert!(b);
+}
+
+
+ #[verifier(external_body)]
+pub fn unreach<A>() -> A {
+    panic!("unreached_external")
+}
+
+#[verifier::external_body]
+pub fn dangle<T>() -> (pt: (PPtr<T>, Tracked<PointsToRaw>, Tracked<Dealloc>)) 
+    ensures 
+        pt.1@.is_range(pt.0.addr() as int, 0 as int),
+        pt.2@@ == (DeallocData {
+            addr: pt.0.addr(),
+            size: 0 as nat,
+            align: align_of::<T>() as nat,
+            provenance: pt.1@.provenance(),
+        }),
+        pt.0.addr() as int == align_of::<T>() as int,
+        // pt.0@.metadata == Metadata::Thin,
+        // pt.0@.provenance == pt.1@.provenance(),
+    opens_invariants none
+    {
+    let pptr = PPtr(align_of::<T>(), PhantomData);
+    (pptr, Tracked::assume_new(), Tracked::assume_new())
+}
+
+
+#[verifier::external_body]
+pub fn dangle_aligned(align: usize) -> (pt: (PPtr<u8>, Tracked<PointsToRaw>, Tracked<Dealloc>)) 
+    requires is_power_2(align as int)
+    ensures 
+        pt.1@.is_range(pt.0.addr() as int, 0 as int),
+        pt.2@@ == (DeallocData {
+            addr: pt.0.addr(),
+            size: 0 as nat,
+            align: align as nat,
+            provenance: pt.1@.provenance(),
+        }),
+        pt.0.addr() as int == align as int,
+        // pt.0@.metadata == Metadata::Thin,
+        // pt.0@.provenance == pt.1@.provenance(),
+    opens_invariants none
+    {
+    let pptr = PPtr(align, PhantomData);
+    (pptr, Tracked::assume_new(), Tracked::assume_new())
+}
 
 // One central function responsible for reporting capacity overflows. This'll
 // ensure that the code generation related to these panics is minimal as there's
 // only one location which panics rather than a bunch throughout the module.
-#[cfg(not(no_global_oom_handling))]
-#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
-#[track_caller]
-fn capacity_overflow() -> ! {
-    panic!("capacity overflow");
-}
+// #[cfg(not(no_global_oom_handling))]
+// #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
+// #[track_caller]
+// fn capacity_overflow() -> ! {
+//     panic!("capacity overflow");
+// }
 
 enum AllocInit {
     /// The contents of the new memory are uninitialized.
@@ -36,7 +91,7 @@ struct Cap(usize);
 
 #[verifier::inline]
 pub open spec fn usizeNoHighBit(x: usize) -> bool {
-    x as nat <= isize::MAX 
+    x <= isize::MAX 
 }
 
 impl Cap {
@@ -59,14 +114,12 @@ impl Cap {
 // Unfortunely Verus does not support this at the moment 
 // const ZERO_CAP: Cap = Cap::new_verified(usize::MAX);
 
-const fn ZERO_CAP() -> Cap {
-    Cap::new_verified(0)
-}
+const ZERO_CAP: Cap = Cap(0);
 
 fn new_cap<T>(cap: usize) -> Cap 
         requires usizeNoHighBit(cap)
 {
-    if size_of::<T>() == 0 { ZERO_CAP() } else {  Cap::new_verified(cap)  }
+    if size_of::<T>() == 0 { ZERO_CAP } else {  Cap::new_verified(cap)  }
 }
 
 /// A low-level utility for more ergonomically allocating, reallocating, and deallocating
@@ -107,7 +160,8 @@ pub(crate) struct RawVec<T, A: Allocator> {
 /// as most operations don't need the actual type, just its layout.
 struct RawVecInner<A: Allocator> {
     ptr: PPtr<u8>,
-    pt: PointsTo<u8>,
+    pt: Tracked<PointsToRaw>,
+    dealloc: Tracked<Dealloc>,
     /// Never used for ZSTs; it's `capacity()`'s responsibility to return usize::MAX in that case.
     ///
     /// # Safety
@@ -148,7 +202,7 @@ impl<T> RawVec<T, Global> {
     #[inline]
     #[track_caller]
     pub(crate) fn with_capacity(capacity: usize) -> Self {
-        Self { inner: RawVecInner::with_capacity(capacity, T::LAYOUT), _marker: PhantomData }
+        Self { inner: RawVecInner::with_capacity(capacity, Layout::new::<T>()), _marker: PhantomData }
     }
 
     /// Like `with_capacity`, but guarantees the buffer is zeroed.
@@ -158,7 +212,7 @@ impl<T> RawVec<T, Global> {
     #[track_caller]
     pub(crate) fn with_capacity_zeroed(capacity: usize) -> Self {
         Self {
-            inner: RawVecInner::with_capacity_zeroed_in(capacity, Global, T::LAYOUT),
+            inner: RawVecInner::with_capacity_zeroed_in(capacity, Global, Layout::new::<T>()),
             _marker: PhantomData,
         }
     }
@@ -170,9 +224,11 @@ impl RawVecInner<Global> {
     #[inline]
     #[track_caller]
     fn with_capacity(capacity: usize, elem_layout: Layout) -> Self {
+
         match Self::try_allocate_in(capacity, AllocInit::Uninitialized, Global, elem_layout) {
             Ok(res) => res,
-            Err(err) => handle_error(err),
+            // Err(err) => handle_error(err),
+            Err(err) => unreach(),
         }
     }
 }
@@ -211,7 +267,7 @@ impl<T, A: Allocator> RawVec<T, A> {
     #[track_caller]
     pub(crate) fn with_capacity_in(capacity: usize, alloc: A) -> Self {
         Self {
-            inner: RawVecInner::with_capacity_in(capacity, alloc, T::LAYOUT),
+            inner: RawVecInner::with_capacity_in(capacity, alloc, Layout::new::<T>()),
             _marker: PhantomData,
         }
     }
@@ -220,7 +276,7 @@ impl<T, A: Allocator> RawVec<T, A> {
     /// allocator for the returned `RawVec`.
     #[inline]
     pub(crate) fn try_with_capacity_in(capacity: usize, alloc: A) -> Result<Self, TryReserveError> {
-        match RawVecInner::try_with_capacity_in(capacity, alloc, T::LAYOUT) {
+        match RawVecInner::try_with_capacity_in(capacity, alloc, Layout::new::<T>()) {
             Ok(inner) => Ok(Self { inner, _marker: PhantomData }),
             Err(e) => Err(e),
         }
@@ -233,7 +289,7 @@ impl<T, A: Allocator> RawVec<T, A> {
     #[track_caller]
     pub(crate) fn with_capacity_zeroed_in(capacity: usize, alloc: A) -> Self {
         Self {
-            inner: RawVecInner::with_capacity_zeroed_in(capacity, alloc, T::LAYOUT),
+            inner: RawVecInner::with_capacity_zeroed_in(capacity, alloc, Layout::new::<T>()),
             _marker: PhantomData,
         }
     }
@@ -295,7 +351,7 @@ impl<T, A: Allocator> RawVec<T, A> {
     ///
     /// See [`RawVec::from_raw_parts_in`].
     #[inline]
-    pub(crate) unsafe fn from_nonnull_in(ptr: NonNull<T>, capacity: usize, alloc: A) -> Self {
+    pub(crate) unsafe fn from_nonnull_in(ptr: PPtr<T>, pt: PointsTo<T>, capacity: usize, alloc: A) -> Self {
         // SAFETY: Precondition passed to the caller
         unsafe {
             let ptr = ptr.cast();
@@ -354,7 +410,7 @@ impl<T, A: Allocator> RawVec<T, A> {
     #[inline]
     #[track_caller]
     pub(crate) fn reserve(&mut self, len: usize, additional: usize) {
-        self.inner.reserve(len, additional, T::LAYOUT)
+        self.inner.reserve(len, additional, Layout::new::<T>())
     }
 
     /// A specialized version of `self.reserve(len, 1)` which requires the
@@ -363,7 +419,7 @@ impl<T, A: Allocator> RawVec<T, A> {
     #[inline(never)]
     #[track_caller]
     pub(crate) fn grow_one(&mut self) {
-        self.inner.grow_one(T::LAYOUT)
+        self.inner.grow_one(Layout::new::<T>())
     }
 
     /// The same as `reserve`, but returns on errors instead of panicking or aborting.
@@ -372,7 +428,7 @@ impl<T, A: Allocator> RawVec<T, A> {
         len: usize,
         additional: usize,
     ) -> Result<(), TryReserveError> {
-        self.inner.try_reserve(len, additional, T::LAYOUT)
+        self.inner.try_reserve(len, additional, Layout::new::<T>())
     }
 
     /// Ensures that the buffer contains at least enough space to hold `len +
@@ -395,7 +451,7 @@ impl<T, A: Allocator> RawVec<T, A> {
     #[cfg(not(no_global_oom_handling))]
     #[track_caller]
     pub(crate) fn reserve_exact(&mut self, len: usize, additional: usize) {
-        self.inner.reserve_exact(len, additional, T::LAYOUT)
+        self.inner.reserve_exact(len, additional, Layout::new::<T>())
     }
 
     /// The same as `reserve_exact`, but returns on errors instead of panicking or aborting.
@@ -404,7 +460,7 @@ impl<T, A: Allocator> RawVec<T, A> {
         len: usize,
         additional: usize,
     ) -> Result<(), TryReserveError> {
-        self.inner.try_reserve_exact(len, additional, T::LAYOUT)
+        self.inner.try_reserve_exact(len, additional, Layout::new::<T>())
     }
 
     /// Shrinks the buffer down to the specified capacity. If the given amount
@@ -421,25 +477,26 @@ impl<T, A: Allocator> RawVec<T, A> {
     #[track_caller]
     #[inline]
     pub(crate) fn shrink_to_fit(&mut self, cap: usize) {
-        self.inner.shrink_to_fit(cap, T::LAYOUT)
+        self.inner.shrink_to_fit(cap, Layout::new::<T>())
     }
 }
 
 
-unsafe impl<#[may_dangle] T, A: Allocator> Drop for RawVec<T, A> {
-    /// Frees the memory owned by the `RawVec` *without* trying to drop its contents.
-    fn drop(&mut self) {
-        // SAFETY: We are in a Drop impl, self.inner will not be used again.
-        unsafe { self.inner.deallocate(T::LAYOUT) }
-    }
-}
+// unsafe impl<#[may_dangle] T, A: Allocator> Drop for RawVec<T, A> {
+//     /// Frees the memory owned by the `RawVec` *without* trying to drop its contents.
+//     fn drop(&mut self) {
+//         // SAFETY: We are in a Drop impl, self.inner will not be used again.
+//         unsafe { self.inner.deallocate(Layout::new::<T>()) }
+//     }
+// }
 
 impl<A: Allocator> RawVecInner<A> {
     #[inline]
     const fn new_in(alloc: A, align: usize) -> Self {
-        let ptr = unsafe { core::mem::transmute(align) };
+        // let ptr = unsafe { core::mem::transmute(align) };
+        let (ptr, pt, dealloc) = dangle_aligned(align);
         // `cap: 0` means "unallocated". zero-sized types are ignored.
-        Self { ptr, cap: ZERO_CAP(), alloc }
+        Self { ptr, pt, dealloc, cap: ZERO_CAP, alloc }
     }
 
     #[cfg(not(no_global_oom_handling))]
@@ -454,7 +511,8 @@ impl<A: Allocator> RawVecInner<A> {
                 // }
                 this
             }
-            Err(err) => handle_error(err),
+            // Err(err) => handle_error(err),
+            Err(err) => unreach<Self>(),
         }
     }
 
@@ -471,9 +529,11 @@ impl<A: Allocator> RawVecInner<A> {
     #[inline]
     #[track_caller]
     fn with_capacity_zeroed_in(capacity: usize, alloc: A, elem_layout: Layout) -> Self {
+
         match Self::try_allocate_in(capacity, AllocInit::Zeroed, alloc, elem_layout) {
             Ok(res) => res,
-            Err(err) => handle_error(err),
+            // Err(err) => handle_error(err),
+            Err(err) => unreach(),
         }
     }
 
@@ -545,7 +605,9 @@ impl<A: Allocator> RawVecInner<A> {
     }
 
     #[inline]
-    const fn capacity(&self, elem_size: usize) -> usize {
+    const fn capacity(&self, elem_size: usize) -> (res: usize)
+        // ensures res as nat == if (elem_size as nat == 0) { usize::max as nat }  
+        {
         if elem_size == 0 { usize::MAX } else { self.cap.as_inner() }
     }
 
@@ -577,6 +639,8 @@ impl<A: Allocator> RawVecInner<A> {
     #[inline]
     #[track_caller]
     fn reserve(&mut self, len: usize, additional: usize, elem_layout: Layout) {
+        use vstd::pervasive::runtime_assert;
+
         // Callers expect this function to be very cheap when there is already sufficient capacity.
         // Therefore, we move all the resizing and error-handling logic from grow_amortized and
         // handle_reserve behind a call, while making sure that this function is likely to be
@@ -589,7 +653,8 @@ impl<A: Allocator> RawVecInner<A> {
             elem_layout: Layout,
         ) {
             if let Err(err) = slf.grow_amortized(len, additional, elem_layout) {
-                handle_error(err);
+                // handle_error(err);
+                runtime_assert(false);
             }
         }
 
@@ -602,8 +667,11 @@ impl<A: Allocator> RawVecInner<A> {
     #[inline]
     #[track_caller]
     fn grow_one(&mut self, elem_layout: Layout) {
+        use vstd::pervasive::runtime_assert;
+
         if let Err(err) = self.grow_amortized(self.cap.as_inner(), 1, elem_layout) {
-            handle_error(err);
+            // handle_error(err);
+            runtime_assert(false);
         }
     }
 
@@ -626,8 +694,11 @@ impl<A: Allocator> RawVecInner<A> {
     #[cfg(not(no_global_oom_handling))]
     #[track_caller]
     fn reserve_exact(&mut self, len: usize, additional: usize, elem_layout: Layout) {
+        use vstd::pervasive::runtime_assert;
+
         if let Err(err) = self.try_reserve_exact(len, additional, elem_layout) {
-            handle_error(err);
+            // handle_error(err);
+            runtime_assert(false);
         }
     }
 
@@ -651,8 +722,11 @@ impl<A: Allocator> RawVecInner<A> {
     #[inline]
     #[track_caller]
     fn shrink_to_fit(&mut self, cap: usize, elem_layout: Layout) {
+        use vstd::pervasive::runtime_assert;
+
         if let Err(err) = self.shrink(cap, elem_layout) {
-            handle_error(err);
+            runtime_assert(false);
+            // handle_error(err);
         }
     }
 
@@ -662,11 +736,15 @@ impl<A: Allocator> RawVecInner<A> {
     }
 
     #[inline]
-    unsafe fn set_ptr_and_cap(&mut self, ptr: NonNull<[u8]>, cap: usize) {
+    unsafe fn set_ptr_and_cap(&mut self, ptr: PPtr<u8>, pt: Tracked<PointsToRaw>, dealloc: Tracked<Dealloc>, cap: usize) 
+        requires usizeNoHighBit(cap),
+        {
         // Allocators currently return a `NonNull<[u8]>` whose length matches
         // the size requested. If that ever changes, the capacity here should
         // change to `ptr.len() / mem::size_of::<T>()`.
-        self.ptr = Unique::from(ptr.cast());
+        self.ptr = ptr;
+        self.pt = pt;
+        self.dealloc = dealloc;
         self.cap = Cap::new_verified(cap);
     }
 
@@ -763,7 +841,7 @@ impl<A: Allocator> RawVecInner<A> {
             // TODO: pointsTo
             // self.ptr =
                 // unsafe { Unique::new_unchecked(ptr::without_provenance_mut(elem_layout.align())) };
-            self.cap = ZERO_CAP();
+            self.cap = ZERO_CAP;
         } else {
             // Layout cannot overflow here because it would have
             // overflowed earlier when capacity was larger.
@@ -827,17 +905,17 @@ where
     memory.map_err(|_| AllocError { layout: new_layout, non_exhaustive: () }.into())
 }
 
-// Central function for reserve error handling.
-#[cfg(not(no_global_oom_handling))]
-#[cold]
-// #[optimize(size)]
-#[track_caller]
-fn handle_error(e: TryReserveError) -> ! {
-    match e.kind() {
-        CapacityOverflow => capacity_overflow(),
-        AllocError { layout, .. } => handle_alloc_error(layout),
-    }
-}
+// // Central function for reserve error handling.
+// #[cfg(not(no_global_oom_handling))]
+// #[cold]
+// // #[optimize(size)]
+// #[track_caller]
+// fn handle_error(e: TryReserveError) -> ! {
+//     match e.kind() {
+//         CapacityOverflow => capacity_overflow(),
+//         AllocError { layout, .. } => handle_alloc_error(layout),
+//     }
+// }
 
 // We need to guarantee the following:
 // * We don't ever allocate `> isize::MAX` byte-size objects.
