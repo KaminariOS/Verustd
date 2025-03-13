@@ -66,7 +66,7 @@
 
         # pkgs.mars-research.mars-tools
       ] ++ (with pkgs; [
-            # rustup
+            rustup
     #         rust-bin.nightly."2024-11-01".default.override {
     #     extensions = ["rustc-dev" "rust-src" "rust-analyzer-preview" ];
     #   targets = [ "x86_64-unknown-linux-gnu" ];

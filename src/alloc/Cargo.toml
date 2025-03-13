@@ -1,4 +1,4 @@
-cargo-features = ["public-dependency"]
+# cargo-features = ["public-dependency"]
 
 [package]
 name = "alloc_verified"

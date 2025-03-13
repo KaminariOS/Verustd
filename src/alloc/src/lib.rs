@@ -56,10 +56,10 @@
 //! [`Rc`]: rc
 //! [`RefCell`]: core::cell
 
-#![feature(alloc_layout_extra)]
-#![feature(allocator_api)]
+// #![feature(alloc_layout_extra)]
+// #![feature(allocator_api)]
 
 extern crate alloc;
 pub mod collections;
 
-mod raw_vec;
+// mod raw_vec;
