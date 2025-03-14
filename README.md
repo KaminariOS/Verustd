@@ -23,13 +23,20 @@ rust_verify src/main.rs --extern=verified_lib -L target/debug/deps --import veri
 ```
 
 ## Limitations of Verus
-- Mutable reference as return value or struct field not supported 
+- Mutable reference(`&mut T`) as return value or struct field not supported 
 - Comparison of non SMT-arith types not supported
-- Insufficient axioms for `std`
+- Insufficient external axioms for `std`
 
 ## Difficulties for verification of `std`
 - Language items
-- `std` only features 
+- `std`-only features 
+- High level invariants
+
+## How Verus can help `std`
+- Ghost code: specifies all safety invariants explicitly and statically check them 
+- Eliminates runtime asserts
+- Removes redundant safety abstractions 
+
 
 ## Reference
 1. [Verus Doc](https://verus-lang.github.io/verus/guide/)
