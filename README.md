@@ -22,6 +22,15 @@ For the main crate
 rust_verify src/main.rs --extern=verified_lib -L target/debug/deps --import verified_lib=../verified_lib/vl.vir
 ```
 
+## Limitations of Verus
+- Mutable reference as return value or struct field not supported 
+- Comparison of non SMT-arith types not supported
+- Insufficient axioms for `std`
+
+## Difficulties for verification of `std`
+- Language items
+- `std` only features 
+
 ## Reference
 1. [Verus Doc](https://verus-lang.github.io/verus/guide/)
 1. [Vstd doc](https://verus-lang.github.io/verus/verusdoc/vstd/)
