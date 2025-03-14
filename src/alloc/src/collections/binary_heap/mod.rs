@@ -378,6 +378,7 @@ impl<T: Ord> BinaryHeap<T> {
     pub fn len(&self) -> (len: usize) 
 
     ensures
+        // An implicit invariant from the implementation of raw_vec: for non ZST, the capacity(in bytes) of the buffer is no greater than isize::MAX; for ZST, it is always usize::MAX 
         // (size_of::<T>() == 0 ==> len == usize::MAX) && (size_of::<T>() != 0 ==> len * size_of::<T>() <= isize::MAX) 
         len <= isize::MAX
         {
