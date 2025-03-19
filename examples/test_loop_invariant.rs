@@ -56,14 +56,30 @@ verus!{
             // if self.len() > 10 {
             // let len = self.len();
             for i in iter: 0..self.len()
-                invariant i <= self.spec_len(),
+                invariant 
+                // i <= self.spec_len(),
                 iter.end == self.spec_len()
             {
 
             }
             // }
         }
-        
+        fn end(&mut self, end: usize) 
+        requires end <= old(self).spec_len()
+        {
+            assert(end <= self.spec_len());
+        }
+
+    fn rebuild_tail(&mut self, start: usize)
+        requires start <= old(self).spec_len()
+        {
+        if start == self.len() {
+            return;
+        }
+
+        let tail_len = self.len() - start;
+
+        }        
         
 
     }
