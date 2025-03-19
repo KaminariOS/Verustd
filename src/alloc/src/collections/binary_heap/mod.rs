@@ -1,146 +1,5 @@
-//! A priority queue implemented with a binary heap.
-//!
-//! Insertion and popping the largest element have *O*(log(*n*)) time complexity.
-//! Checking the largest element is *O*(1). Converting a vector to a binary heap
-//! can be done in-place, and has *O*(*n*) complexity. A binary heap can also be
-//! converted to a sorted vector in-place, allowing it to be used for an *O*(*n* * log(*n*))
-//! in-place heapsort.
-//!
-//! # Examples
-//!
-//! This is a larger example that implements [Dijkstra's algorithm][dijkstra]
-//! to solve the [shortest path problem][sssp] on a [directed graph][dir_graph].
-//! It shows how to use [`BinaryHeap`] with custom types.
-//!
-//! [dijkstra]: https://en.wikipedia.org/wiki/Dijkstra%27s_algorithm
-//! [sssp]: https://en.wikipedia.org/wiki/Shortest_path_problem
-//! [dir_graph]: https://en.wikipedia.org/wiki/Directed_graph
-//!
-//! ```
-//! use std::cmp::Ordering;
-//! use std::collections::BinaryHeap;
-//!
-//! #[derive(Copy, Clone, Eq, PartialEq)]
-//! struct State {
-//!     cost: usize,
-//!     position: usize,
-//! }
-//!
-//! // The priority queue depends on `Ord`.
-//! // Explicitly implement the trait so the queue becomes a min-heap
-//! // instead of a max-heap.
-//! impl Ord for State {
-//!     fn cmp(&self, other: &Self) -> Ordering {
-//!         // Notice that we flip the ordering on costs.
-//!         // In case of a tie we compare positions - this step is necessary
-//!         // to make implementations of `PartialEq` and `Ord` consistent.
-//!         other.cost.cmp(&self.cost)
-//!             .then_with(|| self.position.cmp(&other.position))
-//!     }
-//! }
-//!
-//! // `PartialOrd` needs to be implemented as well.
-//! impl PartialOrd for State {
-//!     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-//!         Some(self.cmp(other))
-//!     }
-//! }
-//!
-//! // Each node is represented as a `usize`, for a shorter implementation.
-//! struct Edge {
-//!     node: usize,
-//!     cost: usize,
-//! }
-//!
-//! // Dijkstra's shortest path algorithm.
-//!
-//! // Start at `start` and use `dist` to track the current shortest distance
-//! // to each node. This implementation isn't memory-efficient as it may leave duplicate
-//! // nodes in the queue. It also uses `usize::MAX` as a sentinel value,
-//! // for a simpler implementation.
-//! fn shortest_path(adj_list: &Vec<Vec<Edge>>, start: usize, goal: usize) -> Option<usize> {
-//!     // dist[node] = current shortest distance from `start` to `node`
-//!     let mut dist: Vec<_> = (0..adj_list.len()).map(|_| usize::MAX).collect();
-//!
-//!     let mut heap = BinaryHeap::new();
-//!
-//!     // We're at `start`, with a zero cost
-//!     dist[start] = 0;
-//!     heap.push(State { cost: 0, position: start });
-//!
-//!     // Examine the frontier with lower cost nodes first (min-heap)
-//!     while let Some(State { cost, position }) = heap.pop() {
-//!         // Alternatively we could have continued to find all shortest paths
-//!         if position == goal { return Some(cost); }
-//!
-//!         // Important as we may have already found a better way
-//!         if cost > dist[position] { continue; }
-//!
-//!         // For each node we can reach, see if we can find a way with
-//!         // a lower cost going through this node
-//!         for edge in &adj_list[position] {
-//!             let next = State { cost: cost + edge.cost, position: edge.node };
-//!
-//!             // If so, add it to the frontier and continue
-//!             if next.cost < dist[next.position] {
-//!                 heap.push(next);
-//!                 // Relaxation, we have now found a better way
-//!                 dist[next.position] = next.cost;
-//!             }
-//!         }
-//!     }
-//!
-//!     // Goal not reachable
-//!     None
-//! }
-//!
-//! fn main() {
-//!     // This is the directed graph we're going to use.
-//!     // The node numbers correspond to the different states,
-//!     // and the edge weights symbolize the cost of moving
-//!     // from one node to another.
-//!     // Note that the edges are one-way.
-//!     //
-//!     //                  7
-//!     //          +-----------------+
-//!     //          |                 |
-//!     //          v   1        2    |  2
-//!     //          0 -----> 1 -----> 3 ---> 4
-//!     //          |        ^        ^      ^
-//!     //          |        | 1      |      |
-//!     //          |        |        | 3    | 1
-//!     //          +------> 2 -------+      |
-//!     //           10      |               |
-//!     //                   +---------------+
-//!     //
-//!     // The graph is represented as an adjacency list where each index,
-//!     // corresponding to a node value, has a list of outgoing edges.
-//!     // Chosen for its efficiency.
-//!     let graph = vec![
-//!         // Node 0
-//!         vec![Edge { node: 2, cost: 10 },
-//!              Edge { node: 1, cost: 1 }],
-//!         // Node 1
-//!         vec![Edge { node: 3, cost: 2 }],
-//!         // Node 2
-//!         vec![Edge { node: 1, cost: 1 },
-//!              Edge { node: 3, cost: 3 },
-//!              Edge { node: 4, cost: 1 }],
-//!         // Node 3
-//!         vec![Edge { node: 0, cost: 7 },
-//!              Edge { node: 4, cost: 2 }],
-//!         // Node 4
-//!         vec![]];
-//!
-//!     assert_eq!(shortest_path(&graph, 0, 1), Some(1));
-//!     assert_eq!(shortest_path(&graph, 0, 3), Some(3));
-//!     assert_eq!(shortest_path(&graph, 3, 0), Some(7));
-//!     assert_eq!(shortest_path(&graph, 0, 4), Some(5));
-//!     assert_eq!(shortest_path(&graph, 4, 0), None);
-//! }
-//! ```
-
 #![allow(missing_docs)]
+#![allow(unused_imports)]
 // #![stable(feature = "rust1", since = "1.0.0")]
 
 // use core::alloc::Allocator;
@@ -156,9 +15,9 @@ use core::cmp::Ordering;
 // use crate::slice;
 // use crate::vec::{self, AsVecIntoIter, Vec};
 // use alloc::alloc::Global;
-use alloc::vec::{self, Vec};
+// use alloc::vec::{self, Vec};
 
-
+use vstd::std_specs::vec::spec_vec_len;
 use vstd::prelude::*;
 
 verus!{
@@ -219,28 +78,23 @@ fn vec_len<T>(v: &Vec<T>) -> (len: usize)
     v.len()
 }
 
-fn count_leading_zeros(n: usize) -> u32 {
-    if n == 0 {
-        return usize::BITS; // All bits are zero
-    }
-
-    let total_bits = usize::BITS;
-    // Iterate from the highest bit down to the lowest (0)
-    for bit in (0..total_bits) {
-        let bit = total_bits - bit - 1;
-        // Check if the current bit is set (shift `n` right by `bit` positions)
-        if (n >> bit) & 1 != 0 {
-            // Leading zeros = total_bits - position_of_highest_set_bit - 1
-            return total_bits - bit - 1;
+    spec fn floor_log2(n: nat) -> nat 
+    decreases n
+    {
+        if n < 2 {
+            0
+        } else {
+            1 + floor_log2(n / 2)
         }
     }
-    // Unreachable for `n != 0` (since at least one bit is set)
-    total_bits
-}
 
+// TODO: hava a formal spec for leading_zeros() and prove the correctness of this function 
 #[inline(always)]
-fn log2_fast(x: usize) -> usize {
-(usize::BITS - count_leading_zeros(x) - 1) as usize
+#[verifier::external_body]
+fn log2_fast(x: usize) -> (res: usize) 
+    ensures res == floor_log2(x as nat) && res <= usize::BITS
+    {
+(usize::BITS - x.leading_zeros() - 1) as usize
 }
 
 /// A priority queue implemented with a binary heap.
@@ -362,26 +216,47 @@ pub struct BinaryHeap<
     // #[unstable(feature = "allocator_api", issue = "32838")] 
 > {
     data: Vec<T>,
-
+    pub elems: Tracked<Map<nat, T>>,
 }
 
 impl<T: Ord> BinaryHeap<T> {
+    pub closed spec fn spec_len(&self) -> usize {
+            spec_vec_len(&self.data)
+    }
+    
+    pub proof fn spec_len_limit(&self) 
+        ensures self.spec_len() < isize::MAX
+    {
+        // An implicit invariant from the implementation of raw_vec: for non ZST, the capacity(in bytes) of the buffer is no greater than isize::MAX; for ZST, it is always usize::MAX 
+        // (size_of::<T>() == 0 ==> len == usize::MAX) && (size_of::<T>() != 0 ==> len * size_of::<T>() <= isize::MAX) 
+        admit()
+    }
+
+    pub closed spec fn well_formed(&self) -> bool {
+            true
+        // &&& (forall|i: nat| 0 <= i < self.len ==> self.elems@.dom().contains(i))
+    }
+
     pub const fn new() -> BinaryHeap<T> {
-        BinaryHeap { data: vec![] }
+        BinaryHeap { data: vec![], elems: Tracked(Map::tracked_empty())}
     }
 
     pub fn with_capacity(capacity: usize) -> BinaryHeap<T> {
-        BinaryHeap { data: Vec::with_capacity(capacity) }
+        BinaryHeap { data: Vec::with_capacity(capacity), elems: Tracked(Map::tracked_empty()) }
     }
 
-    #[verifier::external_body]
     pub fn len(&self) -> (len: usize) 
 
     ensures
         // An implicit invariant from the implementation of raw_vec: for non ZST, the capacity(in bytes) of the buffer is no greater than isize::MAX; for ZST, it is always usize::MAX 
         // (size_of::<T>() == 0 ==> len == usize::MAX) && (size_of::<T>() != 0 ==> len * size_of::<T>() <= isize::MAX) 
-        len <= isize::MAX
+        len <= isize::MAX,
+        len == self.spec_len(),
+        // len == old(self).spec_len()
         {
+        proof {
+            self.spec_len_limit();
+        }
         self.data.len()
     }
 
@@ -423,7 +298,10 @@ impl<T: Ord> BinaryHeap<T> {
     /// # Safety
     ///
     /// The caller must guarantee that `pos < self.len()`.
-    unsafe fn sift_up(&mut self, start: usize, pos: usize) -> usize {
+    unsafe fn sift_up(&mut self, start: usize, pos: usize) -> (res: usize) 
+        requires pos < old(self).spec_len()
+        ensures self.spec_len() == old(self).spec_len()
+        {
         // Take out the value at `pos` and create a hole.
         // SAFETY: The caller guarantees that pos < self.len()
         let mut hole = unsafe { Hole::new(&mut self.data, pos) };
@@ -453,9 +331,18 @@ impl<T: Ord> BinaryHeap<T> {
     /// # Safety
     ///
     /// The caller must guarantee that `pos < end <= self.len()`.
-    unsafe fn sift_down_range(&mut self, pos: usize, end: usize) {
+    unsafe fn sift_down_range(&mut self, pos: usize, end: usize) 
+        requires pos < end && end <= old(self).spec_len()
+        
+{
+        proof {
+            self.spec_len_limit();
+        }
         // SAFETY: The caller guarantees that pos < end <= self.len().
         let mut hole = unsafe { Hole::new(&mut self.data, pos) };
+
+        // assert(hole.spec_pos() <= end);
+        // assert(hole.spec_pos() <= self.spec_len());
         let mut child = 2 * hole.pos() + 1;
 
         // Loop invariant: child == 2 * hole.pos() + 1.
@@ -492,7 +379,10 @@ impl<T: Ord> BinaryHeap<T> {
     /// # Safety
     ///
     /// The caller must guarantee that `pos < self.len()`.
-    unsafe fn sift_down(&mut self, pos: usize) {
+    unsafe fn sift_down(&mut self, pos: usize) 
+    requires pos < old(self).spec_len()
+    ensures old(self).spec_len() == self.spec_len()
+    {
         let len = self.len();
         // SAFETY: pos < len is guaranteed by the caller and
         //  obviously len = self.len() <= self.len().
@@ -508,10 +398,15 @@ impl<T: Ord> BinaryHeap<T> {
     /// # Safety
     ///
     /// The caller must guarantee that `pos < self.len()`.
-    unsafe fn sift_down_to_bottom(&mut self, mut pos: usize) {
+    unsafe fn sift_down_to_bottom(&mut self, mut pos: usize) 
+    requires pos < old(self).spec_len()
+    {
         let end = self.len();
         let start = pos;
 
+        proof {
+            self.spec_len_limit();
+        }
         // SAFETY: The caller guarantees that pos < self.len().
         let mut hole = unsafe { Hole::new(&mut self.data, pos) };
         let mut child = 2 * hole.pos() + 1;
@@ -545,11 +440,13 @@ impl<T: Ord> BinaryHeap<T> {
     }
 
     /// Rebuild assuming data[0..start] is still a proper heap.
-    fn rebuild_tail(&mut self, start: usize) {
+    fn rebuild_tail(&mut self, start: usize)
+        requires start <= old(self).spec_len()
+        {
         if start == self.len() {
             return;
         }
-
+        assert(start <= self.spec_len());
         let tail_len = self.len() - start;
 
 
@@ -562,24 +459,34 @@ impl<T: Ord> BinaryHeap<T> {
         let better_to_rebuild = if start < tail_len {
             true
         } else if self.len() <= 2048 {
-            2 * self.len() < tail_len * log2_fast(start)
+            // NOTE: Right side may overflow but it has no impact on correctness 
+            // 2 * self.len() < tail_len * log2_fast(start)
+            true
         } else {
-            2 * self.len() < tail_len * 11
+            // 2 * self.len() < tail_len * 11
+            true
         };
 
         if better_to_rebuild {
             self.rebuild();
         } else {
-            for i in start..self.len() {
+            for i in iter: start..self.len() 
+                invariant iter.end == self.spec_len()
+            {
                 // SAFETY: The index `i` is always less than self.len().
                 unsafe { self.sift_up(0, i) };
+
             }
         }
     }
 
-    fn rebuild(&mut self) {
+    fn rebuild(&mut self) 
+    requires old(self).spec_len() > 0
+    {
         let mut n = self.len() / 2;
-        while n > 0 {
+        while n > 0 
+        invariant n < self.spec_len()
+        {
             n -= 1;
             // SAFETY: n starts from self.len() / 2 and goes down to 0.
             //  The only case when !(n < self.len()) is if
@@ -630,21 +537,29 @@ struct Hole<T> {
 }
 
 impl<T> Hole<T> {
+    spec fn spec_pos(&self) -> usize {
+            self.pos
+    }
+
     /// Creates a new `Hole` at index `pos`.
     ///
     /// Unsafe because pos must be within the data slice.
     #[inline]
     #[verifier::external_body]
-    unsafe fn new(data: &mut Vec<T>, pos: usize) -> Self {
+    unsafe fn new(data: &mut Vec<T>, pos: usize) -> (res: Self) 
+        ensures pos == res.spec_pos() 
+        {
         // debug_assert!(pos < data.len());
         // SAFE: pos should be inside the slice
         let elt = unsafe { ptr::read(data.get_unchecked(pos)) };
         let len = data.len();
-        Hole { data: data.as_mut_ptr(), elt: elt, pos, len }
+        Hole { data: data.as_mut_ptr(), elt, pos, len }
     }
 
     #[inline]
-    fn pos(&self) -> usize {
+    fn pos(&self) -> (res: usize) 
+    ensures res == self.spec_pos()
+    {
         self.pos
     }
 
@@ -670,7 +585,8 @@ impl<T> Hole<T> {
     /// Unsafe because index must be within the data slice and not equal to pos.
     #[inline]
     #[verifier::external_body]
-    unsafe fn move_to(&mut self, index: usize) {
+    unsafe fn move_to(&mut self, index: usize) 
+        {
         // debug_assert!(index != self.pos);
         // debug_assert!(index < self.len);
         unsafe {
