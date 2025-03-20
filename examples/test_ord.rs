@@ -34,8 +34,14 @@ pub trait TotalOrdered : Sized {
 #[verifier::external_trait_specification]
 pub trait ExOrd: Eq + PartialOrd  {
     type ExternalTraitSpecificationFor: core::cmp::Ord;
-    fn cmp(&self, other: &Self) -> Ordering;
+    fn cmp(&self, other: &Self) -> (res: Ordering)
+    ensures le(self, other)
+;
 }
+
+// pub closed spec fn le<T: Ord + ?Sized>(a: &T, b: &T) -> bool;
+
+
 
 impl<T: Ord> TotalOrdered for T {
     spec fn le(self, other: Self) -> bool;
