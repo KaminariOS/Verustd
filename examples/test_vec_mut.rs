@@ -29,6 +29,18 @@ verus!{
     }
 
     #[verifier::external_body]
+    fn test_ghost(v: Ghost<Seq<usize>>) 
+    ensures v@.len() == 0
+    {
+
+    }
+
+    fn pass_ghost(v: Vec<usize>) {
+        test_ghost(Ghost(v@));
+        assert(v.len() == 0);
+    }
+
+    #[verifier::external_body]
     fn mut_test(x: usize) {
         let mut v = vec!["fd".to_owned(), "kd".to_owned(), "jd".to_owned()];
         let mut s = "sdf".to_owned();
