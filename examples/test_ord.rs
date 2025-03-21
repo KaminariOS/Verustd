@@ -35,7 +35,7 @@ pub trait TotalOrdered : Sized {
 pub trait ExOrd: Eq + PartialOrd  {
     type ExternalTraitSpecificationFor: core::cmp::Ord;
     fn cmp(&self, other: &Self) -> (res: Ordering)
-    ensures le(self, other)
+    // ensures le(self, other)
 ;
 }
 
@@ -90,7 +90,12 @@ fn max<T: TotalOrdered>(a: T, b: T) -> (res: T)
     r
 }
 
-// pub assume_specification<T: Ord>[ core::cmp::Ord::cmp ](
+spec fn le<T: Ord>(a: &T, b: &T) -> bool;
+spec fn spec_cmp<T: Ord>(a: &T, b: &T) -> Ordering 
+        {Ordering::Less}
+
+// #[verifier::when_used_as_spec(spec_cmp)]
+// pub assume_specification<T: Ord>[ T::cmp ](
 //     sel: &T,
 //     other: &T  
 // ) -> (result: Ordering)
@@ -102,4 +107,13 @@ fn max<T: TotalOrdered>(a: T, b: T) -> (res: T)
 // ;
 
 
+// pub open spec fn iter_into_iter_spec<I: Iterator>(i: I) -> I {
+//     i
+// }
+//
+// #[verifier::when_used_as_spec(iter_into_iter_spec)]
+// pub assume_specification<I: Iterator>[ I::into_iter ](i: I) -> (r: I)
+//     ensures
+//         r == i,
+// ;
 }
