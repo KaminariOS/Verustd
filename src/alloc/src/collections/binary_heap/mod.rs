@@ -9,6 +9,7 @@ use core::num::NonZero;
 use core::ops::{Deref, DerefMut};
 use core::{fmt, ptr};
 use core::cmp::Ordering;
+use std::marker::PhantomData;
 
 // use crate::alloc::Global;
 // use crate::collections::TryReserveError;
@@ -17,10 +18,53 @@ use core::cmp::Ordering;
 // use alloc::alloc::Global;
 // use alloc::vec::{self, Vec};
 
-use vstd::std_specs::vec::spec_vec_len;
 use vstd::prelude::*;
 
 verus!{
+
+    pub trait ViewLocalCrate {
+        type V;
+
+        spec fn view(&self) -> Self::V;
+    }
+    impl<T: ?Sized> ViewLocalCrate for ManuallyDrop<T> {
+        type V = Box<T>;
+        spec fn view(&self) -> Self::V;
+    }
+    
+    pub assume_specification<T>[ ManuallyDrop::<T>::new ](v: T) -> (a: ManuallyDrop<T>)
+        ensures
+            a.view() == Box::new(v)
+    ;
+
+    pub assume_specification<T: ?Sized>[ ManuallyDrop::<T>::deref ](s: &ManuallyDrop<T>) -> (a: &T)
+        ensures
+            s.view() == Box::new(a)
+    ;
+
+pub open spec fn le<T: ?Sized>(a: &T, b: &T) -> bool;
+proof fn reflexive<T: Ord + ?Sized>(x: &T)
+ensures le(x, x) 
+{
+    admit()
+}
+
+proof fn total<T: Ord + ?Sized>(x: &T, y: &T)
+ensures le(x, y) || le(y, x) {
+    admit()
+}
+
+proof fn transitive<T: Ord + ?Sized>(x: &T, y: &T, z: &T)
+requires le(x, y), le(y, z),
+ensures le(x, z) {
+    admit()
+}
+
+proof fn antisymmetric<T: Ord + ?Sized>(x: &T, y: &T)
+requires le(x, y), le(y, x),
+ensures x == y {
+    admit()
+}
 
 #[verifier::external_type_specification]
 pub struct ExOrdering(Ordering);
@@ -31,13 +75,14 @@ pub trait ExOrd: Eq + PartialOrd  {
     fn cmp(&self, other: &Self) -> Ordering;
 }
 
-pub assume_specification[ Ordering::is_gt](
+
+
+pub assume_specification[ Ordering::is_gt ](
     v: Ordering,
 ) -> (result: bool)
     ensures
         result == (v == Ordering::Greater) ,
 ;
-
 
 pub assume_specification[ Ordering::is_lt ](
     v: Ordering,
@@ -45,11 +90,6 @@ pub assume_specification[ Ordering::is_lt ](
     ensures
         result == (v == Ordering::Less) ,
 ;
-
-pub assume_specification<T>[ core::mem::drop ](
-    v: T,
-);
-
 
 pub assume_specification[ usize::saturating_sub](
     v: usize,
@@ -70,32 +110,32 @@ pub assume_specification[ usize::saturating_sub](
 //     ensures
 //         (size_of::<T>() == 0 ==> result == usize::MAX) && (size_of::<T>() != 0 ==> result * size_of::<T>() <= isize::MAX) 
 // ;
-#[verifier::external_body]
-fn vec_len<T>(v: &Vec<T>) -> (len: usize) 
-    ensures
-        (size_of::<T>() == 0 ==> len == usize::MAX) && (size_of::<T>() != 0 ==> len * size_of::<T>() <= isize::MAX) 
-{
-    v.len()
-}
-
-    spec fn floor_log2(n: nat) -> nat 
-    decreases n
-    {
-        if n < 2 {
-            0
-        } else {
-            1 + floor_log2(n / 2)
-        }
-    }
+// #[verifier::external_body]
+// fn vec_len<T>(v: &Vec<T>) -> (len: usize) 
+//     ensures
+//         (size_of::<T>() == 0 ==> len == usize::MAX) && (size_of::<T>() != 0 ==> len * size_of::<T>() <= isize::MAX) 
+// {
+//     v.len()
+// }
+//
+//     spec fn floor_log2(n: nat) -> nat 
+//     decreases n
+//     {
+//         if n < 2 {
+//             0
+//         } else {
+//             1 + floor_log2(n / 2)
+//         }
+//     }
 
 // TODO: hava a formal spec for leading_zeros() and prove the correctness of this function 
-#[inline(always)]
-#[verifier::external_body]
-fn log2_fast(x: usize) -> (res: usize) 
-    ensures res == floor_log2(x as nat) && res <= usize::BITS
-    {
-(usize::BITS - x.leading_zeros() - 1) as usize
-}
+// #[inline(always)]
+// #[verifier::external_body]
+// fn log2_fast(x: usize) -> (res: usize) 
+//     ensures res == floor_log2(x as nat) && res <= usize::BITS
+//     {
+// (usize::BITS - x.leading_zeros() - 1) as usize
+// }
 
 /// A priority queue implemented with a binary heap.
 ///
@@ -219,25 +259,43 @@ pub struct BinaryHeap<
     pub elems: Tracked<Map<nat, T>>,
 }
 
+impl<T: Ord> View for BinaryHeap<T> {
+    type V = Seq<T>;
+    closed spec fn view(&self) -> Self::V {
+        self.data@
+    }
+}
+
 impl<T: Ord> BinaryHeap<T> {
     pub closed spec fn spec_len(&self) -> usize {
-            spec_vec_len(&self.data)
+            self.data.len()
     }
-    
+
     pub proof fn spec_len_limit(&self) 
         ensures self.spec_len() < isize::MAX
     {
         // An implicit invariant from the implementation of raw_vec: for non ZST, the capacity(in bytes) of the buffer is no greater than isize::MAX; for ZST, it is always usize::MAX 
         // (size_of::<T>() == 0 ==> len == usize::MAX) && (size_of::<T>() != 0 ==> len * size_of::<T>() <= isize::MAX) 
+        // It is possible that T is ZST, for now let's ignore it
         admit()
+    }
+    spec fn parent(&self, child_idx: nat) -> T {
+        if child_idx == 0 {
+            self@[0]
+        } else {
+            self@[(child_idx - 1) / 2]
+        }
     }
 
     pub closed spec fn well_formed(&self) -> bool {
-            true
-        // &&& (forall|i: nat| 0 <= i < self.len ==> self.elems@.dom().contains(i))
+            // true
+        &&& (forall|i: nat| 0 <= i < self.spec_len() ==> #[trigger] self.elems@.dom().contains(i) && self@[i as int] == self.elems@.index(i))
+        // &&& (forall|i: nat| 0 <= i < self.spec_len() ==> !self@[i as int].cmp(&self.parent(i)).is_gt())
     }
 
-    pub const fn new() -> BinaryHeap<T> {
+    pub const fn new() -> (res: BinaryHeap<T>) 
+    ensures res.well_formed()
+    {
         BinaryHeap { data: vec![], elems: Tracked(Map::tracked_empty())}
     }
 
@@ -260,7 +318,9 @@ impl<T: Ord> BinaryHeap<T> {
         self.data.len()
     }
 
-    pub fn is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> (res: bool) 
+    ensures res == (self.spec_len() == 0)
+    {
         self.len() == 0
     }
 
@@ -272,11 +332,14 @@ impl<T: Ord> BinaryHeap<T> {
         unsafe { self.sift_up(0, old_len) };
     }
 
-    #[verifier::external_body]
-    pub fn pop(&mut self) -> Option<T> {
+    // #[verifier::external_body]
+    pub fn pop(&mut self) -> (res: Option<T>)
+    ensures old(self).spec_len() == 0 ==> res.is_none(),
+        // old(self).spec_len() != 0 ==> 
+    {
         if let Some(mut item) = self.data.pop() {
                 if !self.is_empty() {
-                    swap(&mut item, &mut self.data[0]);
+                    self.swap_with_i(&mut item, 0);
                     // SAFETY: !self.is_empty() means that self.len() > 0
                     unsafe { self.sift_down_to_bottom(0) };
                 }
@@ -284,6 +347,14 @@ impl<T: Ord> BinaryHeap<T> {
             } else {
                 None
             }
+    }
+
+    #[verifier::external_body]
+    fn swap_with_i(&mut self, item: &mut T, i: usize) 
+    requires i < old(self).spec_len()
+    ensures item == self@[0 as int], self@ == old(self)@.update(0, *old(item))
+    {
+         swap(&mut self.data[i], item);
     }
 
     // The implementations of sift_up and sift_down use unsafe blocks in
@@ -306,22 +377,26 @@ impl<T: Ord> BinaryHeap<T> {
         // SAFETY: The caller guarantees that pos < self.len()
         let mut hole = unsafe { Hole::new(&mut self.data, pos) };
 
-        while hole.pos() > start {
+        while hole.pos() > start
+        invariant self.spec_len() == old(self).spec_len(),
+        hole.pos < self.spec_len()
+        {
             let parent = (hole.pos() - 1) / 2;
 
             // SAFETY: hole.pos() > start >= 0, which means hole.pos() > 0
             //  and so hole.pos() - 1 can't underflow.
             //  This guarantees that parent < hole.pos() so
             //  it's a valid index and also != hole.pos().
-            let order = hole.element().cmp(unsafe { hole.get(parent) }); 
+            let order = hole.element().cmp(unsafe { hole.get(parent, &self.data) }); 
             if !order.is_gt() {
                 break;
             }
 
             // SAFETY: Same as above
-            unsafe { hole.move_to(parent) };
+            unsafe { hole.move_to(parent, &mut self.data) };
         }
 
+        hole.pre_drop(&mut self.data);
         hole.pos()
     }
 
@@ -332,8 +407,8 @@ impl<T: Ord> BinaryHeap<T> {
     ///
     /// The caller must guarantee that `pos < end <= self.len()`.
     unsafe fn sift_down_range(&mut self, pos: usize, end: usize) 
-        requires pos < end && end <= old(self).spec_len()
-        
+        requires pos < end, end <= old(self).spec_len()
+        ensures old(self).spec_len() == self.spec_len() 
 {
         proof {
             self.spec_len_limit();
@@ -341,38 +416,50 @@ impl<T: Ord> BinaryHeap<T> {
         // SAFETY: The caller guarantees that pos < end <= self.len().
         let mut hole = unsafe { Hole::new(&mut self.data, pos) };
 
+        assert(old(self).spec_len() == self.spec_len());
         // assert(hole.spec_pos() <= end);
         // assert(hole.spec_pos() <= self.spec_len());
         let mut child = 2 * hole.pos() + 1;
 
+            assert(end <= old(self).spec_len());
         // Loop invariant: child == 2 * hole.pos() + 1.
-        while child <= end.saturating_sub(2) {
+        while child <= end.saturating_sub(2) 
+        invariant 
+        child == 2 * hole.spec_pos() + 1,
+        // child + 1 < end <= self.spec_len(),
+        old(self).spec_len() == self.spec_len(),
+        end <= old(self).spec_len()
+        {
             // compare with the greater of the two children
             // SAFETY: child < end - 1 < self.len() and
             //  child + 1 < end <= self.len(), so they're valid indexes.
             //  child + 1 == 2 * hole.pos() + 2 != hole.pos().
             // FIXME: 2 * hole.pos() + 1 or 2 * hole.pos() + 2 could overflow
             //  if T is a ZST
-            child += unsafe { !hole.get(child).cmp(hole.get(child + 1)).is_gt() } as usize;
+            child += unsafe { !hole.get(child, &self.data).cmp(hole.get(child + 1, &self.data)).is_gt() } as usize;
 
             // if we are already in order, stop.
             // SAFETY: child is now either the old child or the old child+1
             //  We already proven that both are < self.len() and != hole.pos()
-            if !hole.element().cmp(unsafe { hole.get(child) }).is_lt() {
+            if !hole.element().cmp(unsafe { hole.get(child, &self.data) }).is_lt() {
+                // assert(old(self).spec_len() == self.spec_len());
                 return;
             }
 
-            // SAFETY: same as above.
-            unsafe { hole.move_to(child) };
+            // SAFETY: same as above, for now let's ignore it
+            unsafe { hole.move_to(child, &mut self.data) };
+            proof {
+                self.spec_len_limit();
+            }
             child = 2 * hole.pos() + 1;
         }
 
         // SAFETY: && short circuit, which means that in the
         //  second condition it's already true that child == end - 1 < self.len().
-        if child == end - 1 && hole.element().cmp(unsafe { hole.get(child) }).is_lt() {
+        if child == end - 1 && hole.element().cmp(unsafe { hole.get(child, &self.data) }).is_lt() {
             // SAFETY: child is already proven to be a valid index and
             //  child == 2 * hole.pos() + 1 != hole.pos().
-            unsafe { hole.move_to(child) };
+            unsafe { hole.move_to(child, &mut self.data) };
         }
     }
 
@@ -412,27 +499,37 @@ impl<T: Ord> BinaryHeap<T> {
         let mut child = 2 * hole.pos() + 1;
 
         // Loop invariant: child == 2 * hole.pos() + 1.
-        while child <= end.saturating_sub(2) {
+        while child <= end.saturating_sub(2) 
+        invariant child == 2 * hole.spec_pos() + 1,
+        // child + 1 < end <= self.spec_len(),
+        old(self).spec_len() == self.spec_len(),
+        end <= old(self).spec_len(),
+        hole.pos() < self.spec_len()
+{
             // SAFETY: child < end - 1 < self.len() and
             //  child + 1 < end <= self.len(), so they're valid indexes.
             //  child == 2 * hole.pos() + 1 != hole.pos() and
             //  child + 1 == 2 * hole.pos() + 2 != hole.pos().
             // FIXME: 2 * hole.pos() + 1 or 2 * hole.pos() + 2 could overflow
             //  if T is a ZST
-            child += unsafe { if !hole.get(child).cmp(hole.get(child + 1)).is_gt() {1} else {0} } as usize;
+            child += unsafe { if !hole.get(child, &self.data).cmp(hole.get(child + 1, &self.data)).is_gt() {1} else {0} } as usize;
 
             // SAFETY: Same as above
-            unsafe { hole.move_to(child) };
+            unsafe { hole.move_to(child, &mut self.data) };
+            proof {
+                self.spec_len_limit();
+            }
             child = 2 * hole.pos() + 1;
         }
 
         if child == end - 1 {
             // SAFETY: child == end - 1 < self.len(), so it's a valid index
             //  and child == 2 * hole.pos() + 1 != hole.pos().
-            unsafe { hole.move_to(child) };
+            unsafe { hole.move_to(child, &mut self.data) };
         }
         pos = hole.pos();
-        drop(hole);
+        hole.pre_drop(&mut self.data);
+        // drop(hole);
 
         // SAFETY: pos is the position in the hole and was already proven
         //  to be a valid index.
@@ -529,34 +626,37 @@ impl<T: Ord> BinaryHeap<T> {
 /// (because it was moved from or duplicated).
 /// In drop, `Hole` will restore the slice by filling the hole
 /// position with the value that was originally removed.
-struct Hole<T> {
-    data: *mut T,
+struct Hole<'a, T: 'a> {
+    // data: *mut T,
     len: usize,
-    elt: T,
-    pos: usize
+    elt: ManuallyDrop<T>,
+    pos: usize,
+    marker: PhantomData<&'a T>
 }
 
-impl<T> Hole<T> {
+impl<'a, T: 'a> Hole<'a, T> {
     spec fn spec_pos(&self) -> usize {
-            self.pos
-    }
-
+        self.pos
+    } 
     /// Creates a new `Hole` at index `pos`.
     ///
     /// Unsafe because pos must be within the data slice.
     #[inline]
     #[verifier::external_body]
     unsafe fn new(data: &mut Vec<T>, pos: usize) -> (res: Self) 
-        ensures pos == res.spec_pos() 
+        requires pos < old(data).len()
+        ensures pos == res.spec_pos(), data@ == old(data)@
         {
         // debug_assert!(pos < data.len());
         // SAFE: pos should be inside the slice
-        let elt = unsafe { ptr::read(data.get_unchecked(pos)) };
+        let elt = ManuallyDrop::new(unsafe { ptr::read(data.get_unchecked(pos)) });
         let len = data.len();
-        Hole { data: data.as_mut_ptr(), elt, pos, len }
+        Hole { elt, pos, len, marker: PhantomData}
     }
 
     #[inline]
+    // #[verifier::
+    #[verifier::when_used_as_spec(spec_pos)]
     fn pos(&self) -> (res: usize) 
     ensures res == self.spec_pos()
     {
@@ -566,7 +666,7 @@ impl<T> Hole<T> {
     /// Returns a reference to the element removed.
     #[inline]
     fn element(&self) -> &T {
-        &self.elt
+        self.elt.deref()
     }
 
     /// Returns a reference to the element at `index`.
@@ -574,10 +674,14 @@ impl<T> Hole<T> {
     /// Unsafe because index must be within the data slice and not equal to pos.
     #[inline]
     #[verifier::external_body]
-    unsafe fn get(&self, index: usize) -> &T {
+    unsafe fn get<'b>(&self, index: usize, v: &'b Vec<T>) -> (res: &'b T) 
+    requires index != self.pos,
+    index < v.len()
+    ensures *res == v@[index as int]
+    {
         // debug_assert!(index != self.pos);
         // debug_assert!(index < self.len);
-        unsafe { &*self.data.add(index) }
+        unsafe { v.get_unchecked(index) }
     }
 
     /// Move hole to new location
@@ -585,33 +689,48 @@ impl<T> Hole<T> {
     /// Unsafe because index must be within the data slice and not equal to pos.
     #[inline]
     #[verifier::external_body]
-    unsafe fn move_to(&mut self, index: usize) 
+    unsafe fn move_to(&mut self, index: usize, v: &mut Vec<T>)
+        requires index != old(self).pos, index < old(v).len()
+        ensures self.pos == index, 
+        v@ =~= old(v)@.update(index as int, old(v)@[old(self).pos as int]).update(old(self).pos as int, old(v)@[index as int]),
         {
         // debug_assert!(index != self.pos);
         // debug_assert!(index < self.len);
         unsafe {
-            let ptr = self.data;
+            let ptr = v.as_mut_ptr();
             let index_ptr: *const _ = ptr.add(index);
             let hole_ptr = ptr.add(self.pos);
             ptr::copy_nonoverlapping(index_ptr, hole_ptr, 1);
         }
         self.pos = index;
     }
-}
-
-impl<T> Drop for Hole<T> {
-    #[inline]
+    
     #[verifier::external_body]
-    fn drop(&mut self) 
-    opens_invariants none 
-        no_unwind
-        {
-        // fill the hole again
+    fn pre_drop(&mut self, v: &mut Vec<T>) 
+    ensures v == old(v)
+    {
         unsafe {
             let pos = self.pos;
-            ptr::copy_nonoverlapping(&self.elt, self.data.add(pos), 1);
+            ptr::copy_nonoverlapping(&*self.elt, v.get_unchecked_mut(pos), 1);
         }
     }
 }
+
+
+// impl<'a, T: 'a> Drop for Hole<'a, T> {
+//     #[inline]
+//     #[verifier::external_body]
+//     fn drop(&mut self) 
+//     opens_invariants none 
+//         no_unwind
+//         {
+//         // fill the hole again
+//         unsafe {
+//             let pos = self.pos;
+//             ptr::copy_nonoverlapping(&self.elt, self.data.add(pos), 1);
+//         }
+//     }
+// }
+
 }
 
