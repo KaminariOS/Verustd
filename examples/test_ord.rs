@@ -35,7 +35,13 @@ pub trait TotalOrdered : Sized {
 pub trait ExOrd: Eq + PartialOrd  {
     type ExternalTraitSpecificationFor: core::cmp::Ord;
     fn cmp(&self, other: &Self) -> (res: Ordering)
-    // ensures le(self, other)
+                where Self: Ord
+    ensures (match res {
+            Ordering::Less => le(self, other) && self != other,
+            Ordering::Equal => self == other,
+            Ordering::Greater => le(other, self) && self != other,
+        })
+
 ;
 }
 
@@ -90,7 +96,53 @@ fn max<T: TotalOrdered>(a: T, b: T) -> (res: T)
     r
 }
 
-spec fn le<T: Ord>(a: &T, b: &T) -> bool;
+
+fn maxT<T: Ord>(a: T, b: T) -> (res: T) 
+    ensures le(&a, &res) && le(&a, &res)
+{
+    let r = match a.cmp(&b) 
+{
+    Ordering::Less => {
+        assert(le(&a, &b));
+        b
+    },
+    _ => 
+        {
+        proof {
+            total(&a, &b);
+        }
+        assert(le(&b, &a));
+        a} 
+
+    };
+    proof {
+        reflexive(&a);
+        reflexive(&b);
+    }
+    // assert(a.le(r)); 
+    r
+}
+
+// It should be <T: Ord + ?Sized>, but it errors
+pub open spec fn le<T: ?Sized>(a: &T, b: &T) -> bool;
+    proof fn reflexive<T: Ord + ?Sized>(x: &T)
+        ensures le(x, x) {admit()}
+
+    proof fn total<T: Ord + ?Sized>(x: &T, y: &T)
+        ensures le(x, y) || le(y, x) {
+        admit()}
+
+    // proof fn transitive(x: Self, y: Self, z: Self)
+    //     requires Self::le(x, y), Self::le(y, z),
+    //     ensures Self::le(x, z);
+    //
+    // proof fn antisymmetric(x: Self, y: Self)
+    //     requires Self::le(x, y), Self::le(y, x),
+    //     ensures x == y;
+    //
+    // proof fn total(x: Self, y: Self)
+    //     ensures Self::le(x, y) || Self::le(y, x);
+
 spec fn spec_cmp<T: Ord>(a: &T, b: &T) -> Ordering 
         {Ordering::Less}
 
