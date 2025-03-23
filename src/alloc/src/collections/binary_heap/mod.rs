@@ -280,17 +280,37 @@ impl<T: Ord> BinaryHeap<T> {
         admit()
     }
     spec fn parent(&self, child_idx: nat) -> T {
+        self@[Self::parent_index(child_idx)]
+    }
+    
+    spec fn left_child_index(child_idx: nat) -> int {
+        (child_idx * 2 + 1) as int
+    }
+
+    spec fn right_child_index(child_idx: nat) -> int {
+        Self::left_child_index(child_idx)
+    }
+
+    spec fn parent_index(child_idx: nat) -> int {
         if child_idx == 0 {
-            self@[0]
+            0
         } else {
-            self@[(child_idx - 1) / 2]
+            (child_idx - 1) / 2
         }
     }
 
     pub closed spec fn well_formed(&self) -> bool {
             // true
-        &&& (forall|i: nat| 0 <= i < self.spec_len() ==> #[trigger] self.elems@.dom().contains(i) && self@[i as int] == self.elems@.index(i))
-        // &&& (forall|i: nat| 0 <= i < self.spec_len() ==> !self@[i as int].cmp(&self.parent(i)).is_gt())
+        // &&& (forall|i: nat| 0 <= i < self.spec_len() ==> #[trigger] self.elems@.dom().contains(i) && self@[i as int] == self.elems@.index(i))
+        // Every child is not greater than its parent
+        self.well_formed_to(self.spec_len())
+    }
+
+    pub closed spec fn well_formed_to(&self, end: usize) -> bool {
+            // true
+        // &&& (forall|i: nat| 0 <= i < self.spec_len() ==> #[trigger] self.elems@.dom().contains(i) && self@[i as int] == self.elems@.index(i))
+        // Every child is not greater than its parent
+        &&& (forall|i: nat| 0 <= i < end ==> #[trigger] le(&self@[i as int], &self.parent(i)))
     }
 
     pub const fn new() -> (res: BinaryHeap<T>) 
@@ -299,7 +319,9 @@ impl<T: Ord> BinaryHeap<T> {
         BinaryHeap { data: vec![], elems: Tracked(Map::tracked_empty())}
     }
 
-    pub fn with_capacity(capacity: usize) -> BinaryHeap<T> {
+    pub fn with_capacity(capacity: usize) -> (s: BinaryHeap<T>) 
+    ensures s.well_formed()
+    {
         BinaryHeap { data: Vec::with_capacity(capacity), elems: Tracked(Map::tracked_empty()) }
     }
 
@@ -324,7 +346,10 @@ impl<T: Ord> BinaryHeap<T> {
         self.len() == 0
     }
 
-    pub fn push(&mut self, item: T) {
+    pub fn push(&mut self, item: T)
+    requires old(self).well_formed()
+    ensures self.well_formed()
+    {
         let old_len = self.len();
         self.data.push(item);
         // SAFETY: Since we pushed a new item it means that
@@ -332,8 +357,8 @@ impl<T: Ord> BinaryHeap<T> {
         unsafe { self.sift_up(0, old_len) };
     }
 
-    // #[verifier::external_body]
     pub fn pop(&mut self) -> (res: Option<T>)
+    requires old(self).well_formed()
     ensures old(self).spec_len() == 0 ==> res.is_none(),
         // old(self).spec_len() != 0 ==> 
     {
@@ -370,7 +395,8 @@ impl<T: Ord> BinaryHeap<T> {
     ///
     /// The caller must guarantee that `pos < self.len()`.
     unsafe fn sift_up(&mut self, start: usize, pos: usize) -> (res: usize) 
-        requires pos < old(self).spec_len()
+        requires pos < old(self).spec_len(), 
+        start == 0 // all calls to this function have start == 0
         ensures self.spec_len() == old(self).spec_len()
         {
         // Take out the value at `pos` and create a hole.
@@ -486,7 +512,8 @@ impl<T: Ord> BinaryHeap<T> {
     ///
     /// The caller must guarantee that `pos < self.len()`.
     unsafe fn sift_down_to_bottom(&mut self, mut pos: usize) 
-    requires pos < old(self).spec_len()
+    requires pos < old(self).spec_len(), pos == 0,
+    old(self).well_formed_to(pos)
     {
         let end = self.len();
         let start = pos;
@@ -538,7 +565,8 @@ impl<T: Ord> BinaryHeap<T> {
 
     /// Rebuild assuming data[0..start] is still a proper heap.
     fn rebuild_tail(&mut self, start: usize)
-        requires start <= old(self).spec_len()
+        requires start <= old(self).spec_len(), old(self).well_formed_to(start)
+        ensures self.well_formed()
         {
         if start == self.len() {
             return;
@@ -609,14 +637,80 @@ impl<T: Ord> BinaryHeap<T> {
     /// assert_eq!(a.into_sorted_vec(), [-20, -10, 1, 2, 3, 3, 5, 43]);
     /// assert!(b.is_empty());
     /// ```
-    pub fn append(&mut self, other: &mut Self) {
+    pub fn append(&mut self, other: &mut Self)
+    requires old(self).well_formed(), old(other).well_formed()
+    ensures self.well_formed() // && new self is the combination and new other is empty
+    {
         if self.len() < other.len() {
             swap(self, other);
+        } else {
+            // assert(!old(self).spec_len() < old(other).spec_len());
+            // assert(old(self).spec_len() >= old(other).spec_len());
         }
 
         let start = self.data.len();
 
-        self.data.append(&mut other.data);
+        self.data.append(&mut other.data); 
+        proof {
+            if old(self).spec_len() < old(other).spec_len() {
+                assert(self@.subrange(0int, start as int) =~= old(other)@);
+                assert((forall|i: nat| 0 <= i < start &&  
+                (
+                    #[trigger] 
+                    old(other)@[i as int] == self@[i as int] && 
+                    // old(other).parent(i) == self.parent(i) && 
+                    le(&old(other)@[i as int], &old(other).parent(i))
+                ) 
+                ==> 
+                le(&(self)@[i as int], &(self).parent(i))
+                ));
+                // assert((forall|i: nat| 0 <= i < start ==> #[trigger]  le(&(self)@[i as int], &(self).parent(i)) ));
+            } else {
+                assert(self@.subrange(0int, start as int) =~= old(self)@);
+                assert((forall|i: nat| 0 <= i < start &&  
+                (
+                    #[trigger] 
+                    old(self)@[i as int] == self@[i as int] && 
+                    // old(self).parent(i) == self.parent(i) && 
+                    le(&old(self)@[i as int], &old(self).parent(i))
+                ) 
+                ==> 
+                le(&(self)@[i as int], &(self).parent(i))
+                ));
+                // assert((forall|i: nat| 0 <= i < start ==> #[trigger]  le(&(self)@[i as int], &(self).parent(i)) ));
+            }
+            
+            // assert((forall|i: nat| 0 <= i < start ==> #[trigger]  le(&(self)@[i as int], &(self).parent(i)) ));
+        }
+        // assert(start == old(self).spec_len());
+        // assert((!old(self).spec_len() < old(other).spec_len()) == (old(self).spec_len() >= old(other).spec_len()));
+    //     assert(( (!old(self).spec_len() < old(other).spec_len()) ==> self@.subrange(0int, start as int) =~= old(self)@) 
+    //     && 
+    //         ( old(self).spec_len() < old(other).spec_len() ==> self@.subrange(0int, start as int) =~= old(other)@ )
+    // );
+        // assert((forall|i: nat| 0 <= i < start &&  
+        // (
+        //     (
+        //     (!old(self).spec_len() < old(other).spec_len()) ==> 
+        //     #[trigger] 
+        //     old(self)@[i as int] == self@[i as int] && 
+        //     old(self).parent(i) == self.parent(i) && 
+        //     le(&old(self)@[i as int], &old(self).parent(i))
+        //     ) 
+        // && 
+        //     (
+        //     old(self).spec_len() < old(other).spec_len() ==> 
+        //     #[trigger] 
+        //     old(other)@[i as int] == self@[i as int] && 
+        //     old(other).parent(i) == self.parent(i) && 
+        //     le(&old(other)@[i as int], &old(other).parent(i))
+        //     )
+        // ) 
+        // ==> 
+        // le(&(self)@[i as int], &(self).parent(i))
+        // ));
+        // assert((forall|i: nat| 0 <= i < start ==> #[trigger]  le(&(self)@[i as int], &(self).parent(i)) ));
+        // assert(self.well_formed_to(start));
 
         self.rebuild_tail(start);
     }
@@ -645,7 +739,7 @@ impl<'a, T: 'a> Hole<'a, T> {
     #[verifier::external_body]
     unsafe fn new(data: &mut Vec<T>, pos: usize) -> (res: Self) 
         requires pos < old(data).len()
-        ensures pos == res.spec_pos(), data@ == old(data)@
+        ensures pos == res.spec_pos(), data == old(data)
         {
         // debug_assert!(pos < data.len());
         // SAFE: pos should be inside the slice
