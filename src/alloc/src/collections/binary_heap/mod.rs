@@ -299,6 +299,24 @@ impl<T: Ord> BinaryHeap<T> {
         }
     }
 
+    spec fn spec_max(&self) -> Option<T> {
+        if self.is_empty() {
+            None
+        } else {
+            Some(self@.first())
+        }
+    }
+
+    pub closed spec fn spec_is_empty(&self) -> bool {
+        self.spec_len() == 0
+    }
+
+    proof fn max_ensures(&self) 
+    requires self.well_formed()
+    // ensures (forall |i: nat| i < self.spec_len() ==> )
+    // Ensures self.spec_max is the max of the heap
+    {}
+
     pub closed spec fn well_formed(&self) -> bool {
             // true
         // &&& (forall|i: nat| 0 <= i < self.spec_len() ==> #[trigger] self.elems@.dom().contains(i) && self@[i as int] == self.elems@.index(i))
@@ -346,6 +364,7 @@ impl<T: Ord> BinaryHeap<T> {
          }
     }
 
+    #[verifier::external_body]
     proof fn well_formed_to_prefix(&self, prefix: &Self)
     requires prefix.spec_len() <= self.spec_len(), 
             prefix.well_formed(),
@@ -396,15 +415,18 @@ impl<T: Ord> BinaryHeap<T> {
         self.data.len()
     }
 
+    #[verifier::when_used_as_spec(spec_is_empty)]
     pub fn is_empty(&self) -> (res: bool) 
-    ensures res == (self.spec_len() == 0)
+    ensures res == self.spec_is_empty() 
     {
         self.len() == 0
     }
 
     pub fn push(&mut self, item: T)
     requires old(self).well_formed()
-    ensures self.well_formed()
+    ensures 
+    self.well_formed(),
+    self@.to_multiset() =~= old(self)@.push(item).to_multiset()
     {
         let old_len = self.len();
         self.data.push(item);
@@ -414,13 +436,18 @@ impl<T: Ord> BinaryHeap<T> {
             self.well_formed_to_prefix(old(self));
         }
         unsafe { self.sift_up(0, old_len) };
+        // assert(self@.subrange(0int, old_len + 1) == self@);
+        // assert(self@.to_multiset() =~= old(self)@.push(item).to_multiset());
     }
 
     pub fn pop(&mut self) -> (res: Option<T>)
-    requires old(self).well_formed()
-    ensures old(self).spec_len() == 0 ==> res.is_none(),
-    self.well_formed(),
-        // old(self).spec_len() != 0 ==> 
+    // requires old(self).well_formed()
+    // ensures old(self).spec_len() == 0 ==> res.is_none(),
+    //         old(self).spec_len() > 0 ==> {
+    //             res == Some(old(self)@[0]) // It should be the largest element, need a proof for it
+    //             && old(self)@.remove(0).to_multiset() =~= self@.to_multiset()
+    //         }, 
+    //         self.well_formed(),
     {
         if let Some(mut item) = self.data.pop() {
                 if !self.is_empty() {
@@ -459,8 +486,10 @@ impl<T: Ord> BinaryHeap<T> {
         requires pos < old(self).spec_len(), 
         start == 0, // all calls to this function have start == 0
         old(self).well_formed_to(pos)
-        ensures self.spec_len() == old(self).spec_len(),
-        self.well_formed_to((pos + 1) as usize)
+        ensures 
+        self.spec_len() == old(self).spec_len(),
+        self.well_formed_to((pos + 1) as usize),
+        old(self)@.to_multiset() =~= self@.to_multiset()  
         {
         // Take out the value at `pos` and create a hole.
         // SAFETY: The caller guarantees that pos < self.len()
@@ -468,8 +497,15 @@ impl<T: Ord> BinaryHeap<T> {
 
         while hole.pos() > start
         invariant self.spec_len() == old(self).spec_len(),
-        hole.pos < self.spec_len()
+        hole.pos < self.spec_len(),
+        old(self)@.to_multiset() =~= self@.to_multiset(),  
+        self.well_formed_to(hole.pos as _),
+        self.well_formed_from_to(hole.pos as _, (pos + 1) as nat)
+        // 0..hole.pos() is well_formed and hole.pos..pos + 1 is well_formed
         {
+            proof {
+               // self.well_formed_to_prefix(old(self)) 
+            }
             let parent = (hole.pos() - 1) / 2;
 
             // SAFETY: hole.pos() > start >= 0, which means hole.pos() > 0
@@ -485,6 +521,7 @@ impl<T: Ord> BinaryHeap<T> {
             unsafe { hole.move_to(parent, &mut self.data) };
         }
 
+        // 0..=hole.pos() is well_formed and hole.pos..pos + 1 is well_formed ==>  0..pos + 1 is well_formed
         hole.pre_drop(&mut self.data);
         hole.pos()
     }
@@ -832,6 +869,7 @@ impl<'a, T: 'a> Hole<'a, T> {
         requires index != old(self).pos, index < old(v).len()
         ensures self.pos == index, 
         v@ =~= old(v)@.update(index as int, old(v)@[old(self).pos as int]).update(old(self).pos as int, old(v)@[index as int]),
+        v@.to_multiset() =~= old(v)@.to_multiset()
         {
         // debug_assert!(index != self.pos);
         // debug_assert!(index < self.len);
