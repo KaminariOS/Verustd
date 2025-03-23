@@ -310,7 +310,40 @@ impl<T: Ord> BinaryHeap<T> {
             // true
         // &&& (forall|i: nat| 0 <= i < self.spec_len() ==> #[trigger] self.elems@.dom().contains(i) && self@[i as int] == self.elems@.index(i))
         // Every child is not greater than its parent
-        &&& (forall|i: nat| 0 <= i < end ==> #[trigger] le(&self@[i as int], &self.parent(i)))
+        // &&& (forall|i: nat| 0 <= i < end ==> #[trigger] le(&self@[i as int], &self.parent(i)))
+        if end == 0 {
+            true
+        } else {
+            self.well_formed_from_to(0, end as _)
+        }
+    }
+
+    pub closed spec fn well_formed_from(&self, start: usize) -> bool {
+            // true
+        // &&& (forall|i: nat| 0 <= i < self.spec_len() ==> #[trigger] self.elems@.dom().contains(i) && self@[i as int] == self.elems@.index(i))
+        // Every child is not greater than its parent
+        // &&& (forall|i: nat| 0 <= i < end ==> #[trigger] le(&self@[i as int], &self.parent(i)))
+        if start >= self.spec_len() {
+            true
+        } else {
+            self.well_formed_from_to(start as _, self.spec_len() as _)
+        }
+    }
+
+    pub closed spec fn well_formed_from_to(&self, root: nat, end: nat) -> bool 
+    decreases self.spec_len() - root
+    {
+            // true
+        // &&& (forall|i: nat| 0 <= i < self.spec_len() ==> #[trigger] self.elems@.dom().contains(i) && self@[i as int] == self.elems@.index(i))
+        // Every child is not greater than its parent
+          root < end <= self.spec_len() && {
+            let left_child_index = Self::left_child_index(root);
+            let right_child_index = Self::right_child_index(root);
+            let current = &self@[root as _];
+            (left_child_index < end ==> (le(&self@[left_child_index], current) && self.well_formed_from_to(left_child_index as nat, end)))
+            &&
+            (right_child_index < end ==> (le(&self@[right_child_index], current) && self.well_formed_from_to(right_child_index as nat, end)))
+         }
     }
 
     proof fn well_formed_to_prefix(&self, prefix: &Self)
@@ -386,6 +419,7 @@ impl<T: Ord> BinaryHeap<T> {
     pub fn pop(&mut self) -> (res: Option<T>)
     requires old(self).well_formed()
     ensures old(self).spec_len() == 0 ==> res.is_none(),
+    self.well_formed(),
         // old(self).spec_len() != 0 ==> 
     {
         if let Some(mut item) = self.data.pop() {
@@ -403,7 +437,7 @@ impl<T: Ord> BinaryHeap<T> {
     #[verifier::external_body]
     fn swap_with_i(&mut self, item: &mut T, i: usize) 
     requires i < old(self).spec_len()
-    ensures item == self@[0 as int], self@ == old(self)@.update(0, *old(item))
+    ensures item == old(self)@[i as int], self@ == old(self)@.update(i as int, *old(item))
     {
          swap(&mut self.data[i], item);
     }
@@ -498,6 +532,7 @@ impl<T: Ord> BinaryHeap<T> {
             //  We already proven that both are < self.len() and != hole.pos()
             if !hole.element().cmp(unsafe { hole.get(child, &self.data) }).is_lt() {
                 // assert(old(self).spec_len() == self.spec_len());
+                hole.pre_drop(&mut self.data);
                 return;
             }
 
@@ -516,6 +551,7 @@ impl<T: Ord> BinaryHeap<T> {
             //  child == 2 * hole.pos() + 1 != hole.pos().
             unsafe { hole.move_to(child, &mut self.data) };
         }
+        hole.pre_drop(&mut self.data);
     }
 
     /// # Safety
@@ -560,8 +596,8 @@ impl<T: Ord> BinaryHeap<T> {
         // child + 1 < end <= self.spec_len(),
         old(self).spec_len() == self.spec_len(),
         end <= old(self).spec_len(),
-        hole.pos() < self.spec_len()
-{
+        hole.pos() < self.spec_len(),
+        {
             // SAFETY: child < end - 1 < self.len() and
             //  child + 1 < end <= self.len(), so they're valid indexes.
             //  child == 2 * hole.pos() + 1 != hole.pos() and
