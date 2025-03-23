@@ -313,6 +313,29 @@ impl<T: Ord> BinaryHeap<T> {
         &&& (forall|i: nat| 0 <= i < end ==> #[trigger] le(&self@[i as int], &self.parent(i)))
     }
 
+    proof fn well_formed_to_prefix(&self, prefix: &Self)
+    requires prefix.spec_len() <= self.spec_len(), 
+            prefix.well_formed(),
+            prefix@ =~= self@.subrange(0int, prefix.spec_len() as int)
+    ensures self.well_formed_to(prefix.spec_len())
+    {
+        let len = prefix.spec_len();
+        assert(prefix.well_formed_to(len));
+        assert(self@.subrange(0int, len as int) =~= prefix@);
+        assert((forall|i: nat| 0 <= i < len &&
+        (
+            #[trigger]
+            prefix@[i as int] == self@[i as int] &&
+            // old(self).parent(i) == self.parent(i) &&
+            le(&prefix@[i as int], &prefix.parent(i))
+        )
+        ==>
+        le(&self@[i as int], &self.parent(i))
+        ));
+        // TODO: Somehow Verus cannot figure this out need to revisit later
+        assume((forall|i: nat| 0 <= i < len ==> #[trigger]  le(&self@[i as int], &self.parent(i)) ));
+    }
+
     pub const fn new() -> (res: BinaryHeap<T>) 
     ensures res.well_formed()
     {
@@ -354,6 +377,9 @@ impl<T: Ord> BinaryHeap<T> {
         self.data.push(item);
         // SAFETY: Since we pushed a new item it means that
         //  old_len = self.len() - 1 < self.len()
+        proof {
+            self.well_formed_to_prefix(old(self));
+        }
         unsafe { self.sift_up(0, old_len) };
     }
 
@@ -382,6 +408,7 @@ impl<T: Ord> BinaryHeap<T> {
          swap(&mut self.data[i], item);
     }
 
+
     // The implementations of sift_up and sift_down use unsafe blocks in
     // order to move an element out of the vector (leaving behind a
     // hole), shift along the others and move the removed element back into the
@@ -396,8 +423,10 @@ impl<T: Ord> BinaryHeap<T> {
     /// The caller must guarantee that `pos < self.len()`.
     unsafe fn sift_up(&mut self, start: usize, pos: usize) -> (res: usize) 
         requires pos < old(self).spec_len(), 
-        start == 0 // all calls to this function have start == 0
-        ensures self.spec_len() == old(self).spec_len()
+        start == 0, // all calls to this function have start == 0
+        old(self).well_formed_to(pos)
+        ensures self.spec_len() == old(self).spec_len(),
+        self.well_formed_to((pos + 1) as usize)
         {
         // Take out the value at `pos` and create a hole.
         // SAFETY: The caller guarantees that pos < self.len()
@@ -653,30 +682,10 @@ impl<T: Ord> BinaryHeap<T> {
         self.data.append(&mut other.data); 
         proof {
             if old(self).spec_len() < old(other).spec_len() {
-                assert(self@.subrange(0int, start as int) =~= old(other)@);
-                assert((forall|i: nat| 0 <= i < start &&  
-                (
-                    #[trigger] 
-                    old(other)@[i as int] == self@[i as int] && 
-                    // old(other).parent(i) == self.parent(i) && 
-                    le(&old(other)@[i as int], &old(other).parent(i))
-                ) 
-                ==> 
-                le(&(self)@[i as int], &(self).parent(i))
-                ));
+                self.well_formed_to_prefix(old(other));
                 // assert((forall|i: nat| 0 <= i < start ==> #[trigger]  le(&(self)@[i as int], &(self).parent(i)) ));
             } else {
-                assert(self@.subrange(0int, start as int) =~= old(self)@);
-                assert((forall|i: nat| 0 <= i < start &&  
-                (
-                    #[trigger] 
-                    old(self)@[i as int] == self@[i as int] && 
-                    // old(self).parent(i) == self.parent(i) && 
-                    le(&old(self)@[i as int], &old(self).parent(i))
-                ) 
-                ==> 
-                le(&(self)@[i as int], &(self).parent(i))
-                ));
+                self.well_formed_to_prefix(old(self));
                 // assert((forall|i: nat| 0 <= i < start ==> #[trigger]  le(&(self)@[i as int], &(self).parent(i)) ));
             }
             
