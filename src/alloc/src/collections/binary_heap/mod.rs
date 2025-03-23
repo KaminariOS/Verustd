@@ -351,7 +351,11 @@ impl<T: Ord> BinaryHeap<T> {
     pub closed spec fn well_formed_from_to(&self, root: nat, end: nat) -> bool 
     decreases self.spec_len() - root
     {
-            // true
+        // Maybe bottom-up is better:
+        // (forall|i: nat|  i < end <= self.spec_len() ==> #[trigger] le(&self@[i as int], &self.parent(i)))  
+
+
+        // Top-down spec
         // &&& (forall|i: nat| 0 <= i < self.spec_len() ==> #[trigger] self.elems@.dom().contains(i) && self@[i as int] == self.elems@.index(i))
         // Every child is not greater than its parent
           root < end <= self.spec_len() && {
