@@ -72,7 +72,13 @@ pub struct ExOrdering(Ordering);
 #[verifier::external_trait_specification]
 pub trait ExOrd: Eq + PartialOrd  {
     type ExternalTraitSpecificationFor: core::cmp::Ord;
-    fn cmp(&self, other: &Self) -> Ordering;
+    fn cmp(&self, other: &Self) -> (res: Ordering)
+    ensures (match res {
+            Ordering::Less => le(self, other) && self != other,
+            Ordering::Equal => self == other,
+            Ordering::Greater => le(other, self) && self != other,
+        })
+    ;
 }
 
 
@@ -336,11 +342,11 @@ impl<T: Ord> BinaryHeap<T> {
         }
     }
 
-    pub closed spec fn well_formed_from(&self, start: usize) -> bool {
-            // true
-        // &&& (forall|i: nat| 0 <= i < self.spec_len() ==> #[trigger] self.elems@.dom().contains(i) && self@[i as int] == self.elems@.index(i))
-        // Every child is not greater than its parent
-        // &&& (forall|i: nat| 0 <= i < end ==> #[trigger] le(&self@[i as int], &self.parent(i)))
+    pub closed spec fn well_formed_from(&self, start: int) -> bool {
+    //         // true
+    //     // &&& (forall|i: nat| 0 <= i < self.spec_len() ==> #[trigger] self.elems@.dom().contains(i) && self@[i as int] == self.elems@.index(i))
+    //     // Every child is not greater than its parent
+    //     // &&& (forall|i: nat| 0 <= i < end ==> #[trigger] le(&self@[i as int], &self.parent(i)))
         if start >= self.spec_len() {
             true
         } else {
@@ -348,35 +354,43 @@ impl<T: Ord> BinaryHeap<T> {
         }
     }
 
+    pub closed spec fn well_formed_at(&self, i: int) -> bool {
+        if i == 0 {
+            true
+        } else {
+            le(&self@[i], &self.parent(i as _))
+        }
+    }
+
     pub closed spec fn well_formed_from_to(&self, root: nat, end: nat) -> bool 
     decreases self.spec_len() - root
     {
         // Maybe bottom-up is better:
-        // (forall|i: nat|  i < end <= self.spec_len() ==> #[trigger] le(&self@[i as int], &self.parent(i)))  
+        (forall|i: nat|  root <= i < end <= self.spec_len() ==> #[trigger] self.well_formed_at(i as _))  
 
 
         // Top-down spec
         // &&& (forall|i: nat| 0 <= i < self.spec_len() ==> #[trigger] self.elems@.dom().contains(i) && self@[i as int] == self.elems@.index(i))
         // Every child is not greater than its parent
-          root < end <= self.spec_len() && {
-            let left_child_index = Self::left_child_index(root);
-            let right_child_index = Self::right_child_index(root);
-            let current = &self@[root as _];
-            (left_child_index < end ==> (le(&self@[left_child_index], current) && self.well_formed_from_to(left_child_index as nat, end)))
-            &&
-            (right_child_index < end ==> (le(&self@[right_child_index], current) && self.well_formed_from_to(right_child_index as nat, end)))
-         }
+         //  root < end <= self.spec_len() && {
+         //    let left_child_index = Self::left_child_index(root);
+         //    let right_child_index = Self::right_child_index(root);
+         //    let current = &self@[root as _];
+         //    (left_child_index < end ==> (le(&self@[left_child_index], current) && self.well_formed_from_to(left_child_index as nat, end)))
+         //    &&
+         //    (right_child_index < end ==> (le(&self@[right_child_index], current) && self.well_formed_from_to(right_child_index as nat, end)))
+         // }
     }
 
     #[verifier::external_body]
-    proof fn well_formed_to_prefix(&self, prefix: &Self)
+    proof fn well_formed_to_prefix(&self, prefix: &Self, len: int)
     requires prefix.spec_len() <= self.spec_len(), 
-            prefix.well_formed(),
-            prefix@ =~= self@.subrange(0int, prefix.spec_len() as int)
-    ensures self.well_formed_to(prefix.spec_len())
+                len <= prefix.spec_len(),
+            prefix.well_formed_to(len as _),
+            prefix@.subrange(0, len) =~= self@.subrange(0int, len)
+    ensures self.well_formed_to(len as _)
     {
-        let len = prefix.spec_len();
-        assert(prefix.well_formed_to(len));
+        assert(prefix.well_formed_to(len as _));
         assert(self@.subrange(0int, len as int) =~= prefix@);
         assert((forall|i: nat| 0 <= i < len &&
         (
@@ -437,7 +451,7 @@ impl<T: Ord> BinaryHeap<T> {
         // SAFETY: Since we pushed a new item it means that
         //  old_len = self.len() - 1 < self.len()
         proof {
-            self.well_formed_to_prefix(old(self));
+            self.well_formed_to_prefix(old(self), old(self).spec_len() as _);
         }
         unsafe { self.sift_up(0, old_len) };
         // assert(self@.subrange(0int, old_len + 1) == self@);
@@ -500,30 +514,67 @@ impl<T: Ord> BinaryHeap<T> {
         let mut hole = unsafe { Hole::new(&mut self.data, pos) };
 
         while hole.pos() > start
-        invariant self.spec_len() == old(self).spec_len(),
-        hole.pos < self.spec_len(),
-        old(self)@.to_multiset() =~= self@.to_multiset(),  
-        self.well_formed_to(hole.pos as _),
-        self.well_formed_from_to(hole.pos as _, (pos + 1) as nat)
-        // 0..hole.pos() is well_formed and hole.pos..pos + 1 is well_formed
+            invariant 
+            self.spec_len() == old(self).spec_len(),
+            hole.pos < self.spec_len(),
+            old(self)@.to_multiset() =~= self@.to_multiset(),  
+            self@.subrange(0, hole.pos() as int) =~= old(self)@.subrange(0, hole.pos() as int),
+            self.well_formed_to(hole.pos()),
+            // self.well_formed_from(hole.pos() + 1)
+            
+            ensures hole.pos() <= start || self.well_formed_at(hole.pos() as _)
+        // all i is well-formed except hole.pos() 
         {
-            proof {
-               // self.well_formed_to_prefix(old(self)) 
-            }
             let parent = (hole.pos() - 1) / 2;
 
             // SAFETY: hole.pos() > start >= 0, which means hole.pos() > 0
             //  and so hole.pos() - 1 can't underflow.
             //  This guarantees that parent < hole.pos() so
             //  it's a valid index and also != hole.pos().
-            let order = hole.element().cmp(unsafe { hole.get(parent, &self.data) }); 
+            let order = hole.element(&self.data).cmp(unsafe { hole.get(parent, &self.data) }); 
+            
             if !order.is_gt() {
+
+                proof {
+                    // if order != Ordering::Greater {
+                        let element = hole.spec_element(&self.data);
+                        let parent = self.data@[parent as _];
+                        total(&element, &parent);
+                        // assert(le(&element, &parent));
+                        // antisymmetric(hole.element(), self.data@);
+                        // assert(self.well_formed_at(hole.pos() as _));
+                    // }
+                }
                 break;
             }
 
+            let old_pos = hole.pos();
+
+            let ghost old_view = self@;
+            assert(old_view.subrange(0, old_pos as int) =~= old(self)@.subrange(0, old_pos as int));
+            assert( parent < old_pos < self.spec_len());
+            // TODO: need to prove this 
+            assume(old_view.subrange(0, parent as int) =~= old(self)@.subrange(0, parent as int));
+
             // SAFETY: Same as above
             unsafe { hole.move_to(parent, &mut self.data) };
+
+            proof {
+                // TODO: prove this 
+               assume(old(self).well_formed_to(old_pos));
+               assert(old(self).well_formed_to(parent));
+               // old(self).well_formed_to_prefix(old(self), hole.pos() as _); 
+               self.well_formed_to_prefix(old(self), hole.pos() as _); 
+            }
+            // assert(self.data@.subrange(0, parent as int) =~= old_view.subrange(0, parent as int));
+            assert(self.data@.subrange(0, parent as int) =~= old(self)@.subrange(0, parent as int));
         }
+
+        // assert(hole.pos() == 0 || self.well_formed_at(hole.pos() as _));
+        assert(self.well_formed_at(hole.pos() as _));
+            // self.well_formed_to(hole.pos()),
+            // self.well_formed_from(hole.pos() + 1)
+        // With these 3 we can prove self.well_formed_to(pos + 1)
 
         // 0..=hole.pos() is well_formed and hole.pos..pos + 1 is well_formed ==>  0..pos + 1 is well_formed
         hole.pre_drop(&mut self.data);
@@ -571,7 +622,7 @@ impl<T: Ord> BinaryHeap<T> {
             // if we are already in order, stop.
             // SAFETY: child is now either the old child or the old child+1
             //  We already proven that both are < self.len() and != hole.pos()
-            if !hole.element().cmp(unsafe { hole.get(child, &self.data) }).is_lt() {
+            if !hole.element(&self.data).cmp(unsafe { hole.get(child, &self.data) }).is_lt() {
                 // assert(old(self).spec_len() == self.spec_len());
                 hole.pre_drop(&mut self.data);
                 return;
@@ -587,7 +638,7 @@ impl<T: Ord> BinaryHeap<T> {
 
         // SAFETY: && short circuit, which means that in the
         //  second condition it's already true that child == end - 1 < self.len().
-        if child == end - 1 && hole.element().cmp(unsafe { hole.get(child, &self.data) }).is_lt() {
+        if child == end - 1 && hole.element(&self.data).cmp(unsafe { hole.get(child, &self.data) }).is_lt() {
             // SAFETY: child is already proven to be a valid index and
             //  child == 2 * hole.pos() + 1 != hole.pos().
             unsafe { hole.move_to(child, &mut self.data) };
@@ -759,10 +810,10 @@ impl<T: Ord> BinaryHeap<T> {
         self.data.append(&mut other.data); 
         proof {
             if old(self).spec_len() < old(other).spec_len() {
-                self.well_formed_to_prefix(old(other));
+                self.well_formed_to_prefix(old(other), old(other).spec_len() as _);
                 // assert((forall|i: nat| 0 <= i < start ==> #[trigger]  le(&(self)@[i as int], &(self).parent(i)) ));
             } else {
-                self.well_formed_to_prefix(old(self));
+                self.well_formed_to_prefix(old(self), old(self).spec_len() as _);
                 // assert((forall|i: nat| 0 <= i < start ==> #[trigger]  le(&(self)@[i as int], &(self).parent(i)) ));
             }
             
@@ -842,10 +893,17 @@ impl<'a, T: 'a> Hole<'a, T> {
     {
         self.pos
     }
+    
+    spec fn spec_element(&self, v: &Vec<T>) -> (res: T) {
+        v@[self.pos() as _]
+    }
 
     /// Returns a reference to the element removed.
     #[inline]
-    fn element(&self) -> &T {
+    #[verifier::external_body]
+    fn element(&self, v: &Vec<T>) -> (res: &T) 
+    ensures *res == self.spec_element(v) 
+    {
         self.elt.deref()
     }
 
