@@ -19,8 +19,21 @@ use std::marker::PhantomData;
 // use alloc::vec::{self, Vec};
 
 use vstd::prelude::*;
+use vstd::assert_seqs_equal;
 
 verus!{
+
+    // From Travis Hance
+    proof fn prefix_equal<T>(s: Seq<T>, b: Seq<T>, i: usize, j: usize)
+    requires s.len() == b.len(), s.len() > 0, s.subrange(0, j as _) =~= b.subrange(0, j as _) 
+    , 0 <= i <= j < s.len()
+    ensures s.subrange(0, i as _) == b.subrange(0, i as _)
+    {
+        assert_seqs_equal!(s.subrange(0, i as _) == b.subrange(0, i as _), idx => {
+            assert(s.subrange(0, i as _)[idx] == s.subrange(0, j as _)[idx]);
+            assert(b.subrange(0, i as _)[idx] == s.subrange(0, j as _)[idx]);
+        });
+    }
 
     pub trait ViewLocalCrate {
         type V;
@@ -551,10 +564,13 @@ impl<T: Ord> BinaryHeap<T> {
             let old_pos = hole.pos();
 
             let ghost old_view = self@;
-            assert(old_view.subrange(0, old_pos as int) =~= old(self)@.subrange(0, old_pos as int));
-            assert( parent < old_pos < self.spec_len());
+            proof {
+                // assert(old_view.subrange(0, old_pos as int) =~= old(self)@.subrange(0, old_pos as int));
+                // assert( parent < old_pos < self.spec_len());
+                prefix_equal(old_view, old(self)@, parent, old_pos); // For invariant self@.subrange(0, hole.pos() as int) =~= old(self)@.subrange(0, hole.pos() as int)
+                // assert(old_view.subrange(0, parent as int) =~= old(self)@.subrange(0, parent as int));
+            }
             // TODO: need to prove this 
-            assume(old_view.subrange(0, parent as int) =~= old(self)@.subrange(0, parent as int));
 
             // SAFETY: Same as above
             unsafe { hole.move_to(parent, &mut self.data) };
@@ -567,7 +583,7 @@ impl<T: Ord> BinaryHeap<T> {
                self.well_formed_to_prefix(old(self), hole.pos() as _); 
             }
             // assert(self.data@.subrange(0, parent as int) =~= old_view.subrange(0, parent as int));
-            assert(self.data@.subrange(0, parent as int) =~= old(self)@.subrange(0, parent as int));
+            // assert(self.data@.subrange(0, parent as int) =~= old(self)@.subrange(0, parent as int));
         }
 
         // assert(hole.pos() == 0 || self.well_formed_at(hole.pos() as _));
