@@ -147,7 +147,6 @@ pub assume_specification[ usize::saturating_sub](
 //         }
 //     }
 
-// TODO: hava a formal spec for leading_zeros() and prove the correctness of this function 
 // #[inline(always)]
 // #[verifier::external_body]
 // fn log2_fast(x: usize) -> (res: usize) 
@@ -395,6 +394,21 @@ impl<T: Ord> BinaryHeap<T> {
          // }
     }
 
+    // TODO: PROVE IT
+    #[verifier::external_body]
+    proof fn well_formed_subrange(&self, prefix: int, len: int) 
+            requires self.well_formed_to(len as _), 0 <= prefix <= len
+        ensures self.well_formed_to(prefix as _)
+    {
+        if prefix != 0 {
+            assert(forall|i: nat|  0 <= i < len <= self@.len() ==> #[trigger] self.well_formed_at(i as _));
+            assert(forall|i: nat|  0 <= i < prefix <= self@.len() ==> 0 <= i < prefix <= len <= self@.len() ==> 0 <= i < len <= self@.len()
+        ==> #[trigger] self.well_formed_at(i as _)
+    );
+            assert(forall|i: nat|  0 <= i < prefix <= self@.len() ==> #[trigger] self.well_formed_at(i as _))  
+        }
+    }
+
     proof fn well_formed_to_prefix(&self, prefix: &Self, len: int)
     requires 
             0 <= len <= prefix.spec_len() <= self.spec_len(), 
@@ -426,30 +440,6 @@ impl<T: Ord> BinaryHeap<T> {
             ));
             // assert((forall|i: nat| 0 <= i < len ==> #[trigger] self.well_formed_at(i as _) ) == self.well_formed_to(len as _));
         }     
-    }
-
-    proof fn well_formed_to_prefix1(&self, prefix: &Self, i: int)
-    requires prefix.spec_len() <= self.spec_len(),
-                i < prefix.spec_len(),
-            prefix.well_formed(),
-            prefix@ =~= self@.subrange(0int, prefix.spec_len() as int)
-   // ensures self.well_formed_to(prefix.spec_len())
-    {
-        let len = prefix.spec_len();
-       // assert(prefix.well_formed_to(len));
-        assert(self@.subrange(0int, len as int) =~= prefix@);
-        assert((forall|i: nat| 0 <= i < len ==>
-        (
-            #[trigger]
-            prefix@[i as int] == self@[i as int] 
-// &&
-            // old(self).parent(i) == self.parent(i) &&
-            // le(&prefix@[i as int], &prefix.parent(i))
-        )
-        // ==>
-        // le(&self@[i as int], &self.parent(i))
-        ));
-        // assert((forall|i: nat| 0 <= i < len ==> #[trigger]  le(&self@[i as int], &self.parent(i)) ));
     }
 
     pub const fn new() -> (res: BinaryHeap<T>) 
@@ -566,7 +556,9 @@ impl<T: Ord> BinaryHeap<T> {
             old(self)@.to_multiset() =~= self@.to_multiset(),  
             self@.subrange(0, hole.pos() as int) =~= old(self)@.subrange(0, hole.pos() as int),
             self.well_formed_to(hole.pos() as _),
-            // self.well_formed_from(hole.pos() + 1)
+            self.well_formed_from_to((hole.pos() + 1) as _, (pos + 1) as _),
+            hole.pos() <= pos,
+            old(self).well_formed_to(pos as _),
             
             ensures hole.pos() <= start || self.well_formed_at(hole.pos() as _)
         // all i is well-formed except hole.pos() 
@@ -603,14 +595,20 @@ impl<T: Ord> BinaryHeap<T> {
                 prefix_equal(old_view, old(self)@, parent, old_pos); // For invariant self@.subrange(0, hole.pos() as int) =~= old(self)@.subrange(0, hole.pos() as int)
                 // assert(old_view.subrange(0, parent as int) =~= old(self)@.subrange(0, parent as int));
             }
-            // TODO: need to prove this 
 
             // SAFETY: Same as above
             unsafe { hole.move_to(parent, &mut self.data) };
 
+            assert(self.well_formed_at(old_pos as _));
+            // TODO: Need to prove this
+            assume(self.well_formed_from_to((hole.pos() + 1) as _, (pos + 1) as _));
+
             proof {
-                // TODO: prove this 
-               assume(old(self).well_formed_to(old_pos as _));
+
+                // assert(old_pos <= pos);
+                // assert(old(self).well_formed_to(pos as _));
+               old(self).well_formed_subrange(old_pos as _, pos as _);
+
                assert(old(self).well_formed_to(parent as _));
                // old(self).well_formed_to_prefix(old(self), hole.pos() as _); 
                self.well_formed_to_prefix(old(self), hole.pos() as _); 
@@ -620,8 +618,11 @@ impl<T: Ord> BinaryHeap<T> {
         }
 
         // assert(hole.pos() == 0 || self.well_formed_at(hole.pos() as _));
-        assert(self.well_formed_at(hole.pos() as _));
-            // self.well_formed_to(hole.pos()),
+
+        // assert(self.well_formed_at(hole.pos() as _));
+        // assert(self.well_formed_to(hole.pos() as _));
+        // assert(self.well_formed_from_to((hole.pos() + 1) as _, (pos + 1) as _));
+        // assert(self.well_formed_to((pos + 1) as _));
             // self.well_formed_from(hole.pos() + 1)
         // With these 3 we can prove self.well_formed_to(pos + 1)
 
@@ -772,7 +773,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// Rebuild assuming data[0..start] is still a proper heap.
     fn rebuild_tail(&mut self, start: usize)
         requires start <= old(self).spec_len(), old(self).well_formed_to(start as _)
-        // ensures self.well_formed()
+        ensures self.well_formed()
         {
         if start == self.len() {
             return;
