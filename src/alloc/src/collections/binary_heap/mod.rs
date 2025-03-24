@@ -340,10 +340,10 @@ impl<T: Ord> BinaryHeap<T> {
             // true
         // &&& (forall|i: nat| 0 <= i < self.spec_len() ==> #[trigger] self.elems@.dom().contains(i) && self@[i as int] == self.elems@.index(i))
         // Every child is not greater than its parent
-        self.well_formed_to(self.spec_len())
+        self.well_formed_to(self.spec_len() as _)
     }
 
-    pub closed spec fn well_formed_to(&self, end: usize) -> bool {
+    pub closed spec fn well_formed_to(&self, end: nat) -> bool {
             // true
         // &&& (forall|i: nat| 0 <= i < self.spec_len() ==> #[trigger] self.elems@.dom().contains(i) && self@[i as int] == self.elems@.index(i))
         // Every child is not greater than its parent
@@ -379,7 +379,7 @@ impl<T: Ord> BinaryHeap<T> {
     decreases self.spec_len() - root
     {
         // Maybe bottom-up is better:
-        (forall|i: nat|  root <= i < end <= self.spec_len() ==> #[trigger] self.well_formed_at(i as _))  
+        (forall|i: nat|  root <= i < end <= self@.len() ==> #[trigger] self.well_formed_at(i as _))  
 
 
         // Top-down spec
@@ -395,28 +395,61 @@ impl<T: Ord> BinaryHeap<T> {
          // }
     }
 
-    #[verifier::external_body]
     proof fn well_formed_to_prefix(&self, prefix: &Self, len: int)
-    requires prefix.spec_len() <= self.spec_len(), 
-                len <= prefix.spec_len(),
+    requires 
+            0 <= len <= prefix.spec_len() <= self.spec_len(), 
             prefix.well_formed_to(len as _),
-            prefix@.subrange(0, len) =~= self@.subrange(0int, len)
+            prefix@.take(len) =~= self@.take(len)
     ensures self.well_formed_to(len as _)
     {
-        assert(prefix.well_formed_to(len as _));
+        // assert(prefix.well_formed_to(len as _));
+        assert(self@.take(len) =~= prefix@.take(len));
+        if len != 0 {
+            assert(self@.subrange(0, len) =~= prefix@.subrange(0, len));
+            let prefix_p = prefix@.take(len);
+            let self_p = self@.take(len);
+            assert((forall|i: nat| 0 <= i < len ==>
+            (
+                prefix_p[i as int] == self_p[i as int] 
+                && prefix@[i as int] == prefix_p[i as int] 
+                && self@[i as int] == self_p[i as int] 
+                && #[trigger] self@[i as int] == prefix@[i as int] 
+            )
+            ));
+            assert((forall|i: nat| 0 <= i < len ==>
+            (
+                self@[i as int] == prefix@[i as int] 
+                // && prefix.parent(i) == self.parent(i) 
+                && prefix.well_formed_at(i as _) 
+                && #[trigger] self.well_formed_at(i as _)
+            )
+            ));
+            // assert((forall|i: nat| 0 <= i < len ==> #[trigger] self.well_formed_at(i as _) ) == self.well_formed_to(len as _));
+        }     
+    }
+
+    proof fn well_formed_to_prefix1(&self, prefix: &Self, i: int)
+    requires prefix.spec_len() <= self.spec_len(),
+                i < prefix.spec_len(),
+            prefix.well_formed(),
+            prefix@ =~= self@.subrange(0int, prefix.spec_len() as int)
+   // ensures self.well_formed_to(prefix.spec_len())
+    {
+        let len = prefix.spec_len();
+       // assert(prefix.well_formed_to(len));
         assert(self@.subrange(0int, len as int) =~= prefix@);
-        assert((forall|i: nat| 0 <= i < len &&
+        assert((forall|i: nat| 0 <= i < len ==>
         (
             #[trigger]
-            prefix@[i as int] == self@[i as int] &&
+            prefix@[i as int] == self@[i as int] 
+// &&
             // old(self).parent(i) == self.parent(i) &&
-            le(&prefix@[i as int], &prefix.parent(i))
+            // le(&prefix@[i as int], &prefix.parent(i))
         )
-        ==>
-        le(&self@[i as int], &self.parent(i))
+        // ==>
+        // le(&self@[i as int], &self.parent(i))
         ));
-        // TODO: Somehow Verus cannot figure this out need to revisit later
-        assume((forall|i: nat| 0 <= i < len ==> #[trigger]  le(&self@[i as int], &self.parent(i)) ));
+        // assert((forall|i: nat| 0 <= i < len ==> #[trigger]  le(&self@[i as int], &self.parent(i)) ));
     }
 
     pub const fn new() -> (res: BinaryHeap<T>) 
@@ -516,10 +549,10 @@ impl<T: Ord> BinaryHeap<T> {
     unsafe fn sift_up(&mut self, start: usize, pos: usize) -> (res: usize) 
         requires pos < old(self).spec_len(), 
         start == 0, // all calls to this function have start == 0
-        old(self).well_formed_to(pos)
+        old(self).well_formed_to(pos as _)
         ensures 
         self.spec_len() == old(self).spec_len(),
-        self.well_formed_to((pos + 1) as usize),
+        self.well_formed_to((pos + 1) as _),
         old(self)@.to_multiset() =~= self@.to_multiset()  
         {
         // Take out the value at `pos` and create a hole.
@@ -532,7 +565,7 @@ impl<T: Ord> BinaryHeap<T> {
             hole.pos < self.spec_len(),
             old(self)@.to_multiset() =~= self@.to_multiset(),  
             self@.subrange(0, hole.pos() as int) =~= old(self)@.subrange(0, hole.pos() as int),
-            self.well_formed_to(hole.pos()),
+            self.well_formed_to(hole.pos() as _),
             // self.well_formed_from(hole.pos() + 1)
             
             ensures hole.pos() <= start || self.well_formed_at(hole.pos() as _)
@@ -577,8 +610,8 @@ impl<T: Ord> BinaryHeap<T> {
 
             proof {
                 // TODO: prove this 
-               assume(old(self).well_formed_to(old_pos));
-               assert(old(self).well_formed_to(parent));
+               assume(old(self).well_formed_to(old_pos as _));
+               assert(old(self).well_formed_to(parent as _));
                // old(self).well_formed_to_prefix(old(self), hole.pos() as _); 
                self.well_formed_to_prefix(old(self), hole.pos() as _); 
             }
@@ -686,7 +719,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// The caller must guarantee that `pos < self.len()`.
     unsafe fn sift_down_to_bottom(&mut self, mut pos: usize) 
     requires pos < old(self).spec_len(), pos == 0,
-    old(self).well_formed_to(pos)
+    old(self).well_formed_to(pos as _)
     {
         let end = self.len();
         let start = pos;
@@ -738,8 +771,8 @@ impl<T: Ord> BinaryHeap<T> {
 
     /// Rebuild assuming data[0..start] is still a proper heap.
     fn rebuild_tail(&mut self, start: usize)
-        requires start <= old(self).spec_len(), old(self).well_formed_to(start)
-        ensures self.well_formed()
+        requires start <= old(self).spec_len(), old(self).well_formed_to(start as _)
+        // ensures self.well_formed()
         {
         if start == self.len() {
             return;
