@@ -56,14 +56,14 @@ verus!{
     ;
 
 pub open spec fn le<T: ?Sized>(a: &T, b: &T) -> bool;
-proof fn reflexive<T: Ord + ?Sized>(x: &T)
-ensures le(x, x) 
+broadcast proof fn reflexive<T: Ord + ?Sized>(x: &T)
+ensures #[trigger] le(x, x) 
 {
     admit()
 }
 
-proof fn total<T: Ord + ?Sized>(x: &T, y: &T)
-ensures le(x, y) || le(y, x) {
+broadcast proof fn total<T: Ord + ?Sized>(x: &T, y: &T)
+ensures #[trigger] le(x, y) || le(y, x) {
     admit()
 }
 
@@ -367,15 +367,11 @@ impl<T: Ord> BinaryHeap<T> {
     }
 
     pub closed spec fn well_formed_at(&self, i: int) -> bool {
-        if i == 0 {
-            true
-        } else {
-            le(&self@[i], &self.parent(i as _))
-        }
+        le(&self@[i], &self.parent(i as _))
     }
 
     pub closed spec fn well_formed_from_to(&self, root: nat, end: nat) -> bool 
-    decreases self.spec_len() - root
+    // decreases self.spec_len() - root
     {
         // Maybe bottom-up is better:
         (forall|i: nat|  root <= i < end <= self@.len() ==> #[trigger] self.well_formed_at(i as _))  
@@ -400,13 +396,13 @@ impl<T: Ord> BinaryHeap<T> {
             requires self.well_formed_to(len as _), 0 <= prefix <= len
         ensures self.well_formed_to(prefix as _)
     {
-        if prefix != 0 {
-            assert(forall|i: nat|  0 <= i < len <= self@.len() ==> #[trigger] self.well_formed_at(i as _));
-            assert(forall|i: nat|  0 <= i < prefix <= self@.len() ==> 0 <= i < prefix <= len <= self@.len() ==> 0 <= i < len <= self@.len()
-        ==> #[trigger] self.well_formed_at(i as _)
-    );
-            assert(forall|i: nat|  0 <= i < prefix <= self@.len() ==> #[trigger] self.well_formed_at(i as _))  
-        }
+    //     if prefix != 0 {
+    //         assert(forall|i: nat|  0 <= i < len <= self@.len() ==> #[trigger] self.well_formed_at(i as _));
+    //         assert(forall|i: nat|  0 <= i < prefix <= self@.len() ==> 0 <= i < prefix <= len <= self@.len() ==> 0 <= i < len <= self@.len()
+    //     ==> #[trigger] self.well_formed_at(i as _)
+    // );
+    //         assert(forall|i: nat|  0 <= i < prefix <= self@.len() ==> #[trigger] self.well_formed_at(i as _))  
+    //     }
     }
 
     proof fn well_formed_to_prefix(&self, prefix: &Self, len: int)
@@ -618,12 +614,13 @@ impl<T: Ord> BinaryHeap<T> {
         }
 
         // assert(hole.pos() == 0 || self.well_formed_at(hole.pos() as _));
-
+        proof {
+            reflexive(&self@[0]);
+        }
         // assert(self.well_formed_at(hole.pos() as _));
         // assert(self.well_formed_to(hole.pos() as _));
         // assert(self.well_formed_from_to((hole.pos() + 1) as _, (pos + 1) as _));
         // assert(self.well_formed_to((pos + 1) as _));
-            // self.well_formed_from(hole.pos() + 1)
         // With these 3 we can prove self.well_formed_to(pos + 1)
 
         // 0..=hole.pos() is well_formed and hole.pos..pos + 1 is well_formed ==>  0..pos + 1 is well_formed
