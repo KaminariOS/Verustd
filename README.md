@@ -26,8 +26,8 @@ rust_verify src/main.rs --extern=verified_lib -L target/debug/deps --import veri
 - Mutable reference(`&mut T`) as return value or struct field not supported 
 - `&mut data[i]` not supported
 - Deref type conversion not supported
-- Comparison of non SMT-arith types not supported
-- Insufficient external axioms for `std`
+- Comparison operators for non SMT-arith types not supported
+- Insufficient external specification for `std` in `vstd`
 
 ## Difficulties for verification of `std`
 - Language items
@@ -38,15 +38,18 @@ rust_verify src/main.rs --extern=verified_lib -L target/debug/deps --import veri
 - Ghost code: specifies all safety invariants explicitly and statically checks them 
 - Eliminates debug runtime asserts
 - Removes redundant safety abstractions 
+- Verus by default checks for possible arithmetic overflow/underflow. 
 
 ## Hints for verifying data structures
 - Select an abstract model(`impl View`) of the target data structure. For example, `BinaryHeap<T>` can be represented as `Seq<T>` 
-- Define a well-formedness specification(usually recursively) in terms of the abstract model. For example, in a `BinaryHeap`, both left and right children are less than or equal to their parent. For all `pub fn x(&mut self, ...)` API, the precondition and postcondition both include well-formedness.  
+- Define a well-formedness specification(usually recursively) in terms of the abstract model. For example, in a `BinaryHeap`, both left and right children are less than or equal to their parent. For all `pub fn x(&mut self, ...)` API, the precondition and postcondition both include well-formedness.
+    - There are usually more than one way to define well-formedness: bottom-up, top-down, etc. Need to find one that is easy for Verification.
+- Reuse spec and proof code blocks as functions like regular programming.
 - Write external specifications for functions, types and traits that are out of the scope of verification.
 - Use assumptions to temporarily finish proofs.
 
 ## Verus features 
-The `examples` directory contains small code snippets we write for testing Verus features. 
+The `examples` directory contains small code snippets we write for testing Verus features.
 
 ## Reference
 1. [Verus Doc](https://verus-lang.github.io/verus/guide/)

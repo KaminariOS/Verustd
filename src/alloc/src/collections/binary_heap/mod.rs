@@ -628,11 +628,11 @@ impl<T: Ord> BinaryHeap<T> {
             proof {
                 // TODO: Need to prove this
                 // The last part of the proof is a little tricky: [old_pos + 1..pos + 1] may have
-                        // children of old_hole, need to prove parent is larger, parent >
-                        // origal_val at old_pos(before hole) so bigger than its children; 
-                        // [old_pos - 1] or [old_pos + 1] is the other
-                        // child of parent, easy to prove that it must be <= parent <= hole.
-                        // Other locations in [old_pos + 1..pos + 1] and [parent + 1..old_pos] are unaffected
+                // children of old_hole, need to prove parent is larger, parent >
+                // origal_val at old_pos(before hole) so bigger than its children, need to prove invariant: elem <= parent(elem) <= parent(parent(elem)) for all elem != hole; 
+                // [old_pos - 1] or [old_pos + 1] is the other
+                // child of parent, easy to prove that it must be <= parent <= hole.
+                // Other locations in [old_pos + 1..pos + 1] and [parent + 1..old_pos] are unaffected
                 assume(self.well_formed_from_to((old_pos + 1) as _, (pos + 1) as _));
                 assume(self.well_formed_from_to((parent + 1) as _, old_pos as _));
 

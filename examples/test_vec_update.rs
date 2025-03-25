@@ -58,4 +58,25 @@ verus!{
     {
 
     }
+
+    struct S {
+        v: Vec<usize>
+    }
+
+    fn mutate_inner(s: &mut S) {
+    }
+
+    fn mutate(s: &mut S) 
+    // ensures something
+    {
+        // let ghost old_s = old(s);
+        loop {
+            // let ghost curent = s; // This errors 
+            mutate_inner(s);
+            // Cannot call s(before mutate_inner) spec and proof 
+            // Want to compare s(after mutate_inner) and s(before mutate_inner) here to prove to
+            // something
+        }
+        
+    }
 }
