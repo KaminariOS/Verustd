@@ -67,9 +67,9 @@ ensures #[trigger] le(x, y) || le(y, x) {
     admit()
 }
 
-proof fn transitive<T: Ord + ?Sized>(x: &T, y: &T, z: &T)
-requires le(x, y), le(y, z),
-ensures le(x, z) {
+broadcast proof fn transitive<T: Ord + ?Sized>(x: &T, y: &T, z: &T)
+requires #[trigger] le(x, y), le(y, z),
+ensures #[trigger] le(x, z) {
     admit()
 }
 
@@ -329,11 +329,27 @@ impl<T: Ord> BinaryHeap<T> {
         self.spec_len() == 0
     }
 
-    proof fn max_ensures(&self) 
-    requires self.well_formed()
-    // ensures (forall |i: nat| i < self.spec_len() ==> )
+    proof fn max_ensures(&self, i: int) 
+    requires self.well_formed(), 0 <= i < self.spec_len() 
+    ensures if let Some(max) = self.spec_max() {
+         le(&self@[i], &max)
+    } else {
+        true
+    } 
+    decreases i
     // Ensures self.spec_max is the max of the heap
-    {}
+    {
+        broadcast use reflexive, transitive;
+        if i == 0 {
+            
+        } else {
+            let p = Self::parent_index(i as _);
+        // p is strictly less than i because i > 0.
+            assert(p < i);
+            assert(self.well_formed_at(i as _));
+            self.max_ensures(p);
+        }
+    }
 
     pub closed spec fn well_formed(&self) -> bool {
             // true
