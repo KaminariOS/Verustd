@@ -616,7 +616,7 @@ impl<T: Ord> BinaryHeap<T> {
                 self.well_formed_subrange(0, old_pos as _, (parent + 1) as _, old_pos as _);
                 assert(self.well_formed_from_to((parent + 1) as _, old_pos as _));
                 // assert(old_view.subrange(0, old_pos as int) =~= old(self)@.subrange(0, old_pos as int));
-                // assert( parent < old_pos < self.spec_len());
+                // assert( parent < old_pos < self.spec_len()); 
                 prefix_equal(old_view, old(self)@, parent, old_pos); // For invariant self@.subrange(0, hole.pos() as int) =~= old(self)@.subrange(0, hole.pos() as int)
                 // assert(old_view.subrange(0, parent as int) =~= old(self)@.subrange(0, parent as int));
             }
@@ -625,9 +625,14 @@ impl<T: Ord> BinaryHeap<T> {
             unsafe { hole.move_to(parent, &mut self.data) };
 
             // assert(self.well_formed_at(old_pos as _));
-            // TODO: Need to prove this
             proof {
-                // assert(self@.subrange((parent + 1) as _, old_pos as _) =~= old_view.subrange((parent + 1) as _, old_pos as _));
+                // TODO: Need to prove this
+                // The last part of the proof is a little tricky: [old_pos + 1..pos + 1] may have
+                        // children of old_hole, need to prove parent is larger, parent >
+                        // origal_val at old_pos(before hole) so bigger than its children; 
+                        // [old_pos - 1] or [old_pos + 1] is the other
+                        // child of parent, easy to prove that it must be <= parent <= hole.
+                        // Other locations in [old_pos + 1..pos + 1] and [parent + 1..old_pos] are unaffected
                 assume(self.well_formed_from_to((old_pos + 1) as _, (pos + 1) as _));
                 assume(self.well_formed_from_to((parent + 1) as _, old_pos as _));
 
