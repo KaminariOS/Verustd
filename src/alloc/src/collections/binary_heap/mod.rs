@@ -570,6 +570,17 @@ impl<T: Ord> BinaryHeap<T> {
         // SAFETY: The caller guarantees that pos < self.len()
         let mut hole = unsafe { Hole::new(&mut self.data, pos) };
 
+        assert
+            forall|i: int| 0 <= i <= pos as int && Self::parent_index(i as _) == hole.pos()
+                implies #[trigger]  le(&self@[i], &self.parent(hole.pos() as _)) 
+        by {
+            if i == 0 {
+                reflexive(&self@[0]);
+            } else {
+            }
+        }
+        ;
+
         while hole.pos() > start
             invariant 
             self.spec_len() == old(self).spec_len(),
@@ -581,6 +592,10 @@ impl<T: Ord> BinaryHeap<T> {
             hole.pos() <= pos,
             old(self).well_formed_to(pos as _),
             pos <= old(self)@.len(), 
+
+            // forall|i: int| 0 <= i <= pos as int && Self::parent_index(i as _) == hole.pos() 
+            //     ==> #[trigger] le(&self@[i], &self.parent(hole.pos() as _)) 
+            
             ensures hole.pos() <= start || self.well_formed_at(hole.pos() as _)
         // all i is well-formed except hole.pos() 
         {
@@ -634,7 +649,38 @@ impl<T: Ord> BinaryHeap<T> {
                 // [old_pos - 1] or [old_pos + 1] is the other
                 // child of parent, easy to prove that it must be <= parent <= hole.
                 // Other locations in [old_pos + 1..pos + 1] and [parent + 1..old_pos] are unaffected
+
+            // TODO: Prove this loop invariant
+            // forall|i: int| 0 <= i <= pos as int && Self::parent_index(i as _) == hole.pos() 
+            //     ==> #[trigger] le(&self@[i], &self.parent(hole.pos() as _)) 
+            
+            // TODO: With the loop invariant above, we can prove that [old_pos  + 1, pos + 1] well_formed after move_to call 
+            // forall|i: int| 0 <= i <= pos as int
+            //     ==> Self::parent_index(i as _) == hole.pos() 
+            //     ==> #[trigger] le(&self@[i], &self.parent(hole.pos() as _)) 
+            //     assert forall |i: int| old_pos + 1 <= i < pos + 1 implies 
+            //         #[trigger] self.well_formed_at(i) 
+            //         by {
+            //         assert(self@[i] == state_before_move@[i] 
+            //         && state_before_move.well_formed_at(i)
+            // //     ==> Self::parent_index(i as _) == old_pos 
+            // //     ==> #[trigger] le(&state_before_move@[i], &state_before_move.parent(hole.pos() as _)) 
+            //         ); 
+            //
+            //             let parent_index = Self::parent_index(i as _); 
+            //             if parent_index == old_pos {
+            //                 transitive(&state_before_move@[i], &state_before_move@[parent_index as _], &state_before_move@[parent as _]); 
+            //             } 
+            //             else if parent_index == parent as int {
+            //                 transitive(&state_before_move@[i], &state_before_move@[parent_index as _], &state_before_move@[old_pos as _]); 
+            //                 // Prove new hole is larger than i by transitive
+            //             }
+            //             else {
+            //                  // assert(self.well_formed_at(i));  
+            //             } 
+            //         };
                 assume(self.well_formed_from_to((old_pos + 1) as _, (pos + 1) as _));
+
                 // assert(state_before_move.well_formed_from_to((parent + 1) as _, old_pos as _));
                 // assert(le(&state_before_move@[parent as _], &state_before_move@[old_pos as _])); 
 
@@ -671,7 +717,7 @@ impl<T: Ord> BinaryHeap<T> {
                 // assert(old(self).well_formed_to(pos as _));
                old(self).well_formed_subrange(0, pos as _, 0, old_pos as _);
 
-               assert(old(self).well_formed_to(parent as _));
+               // assert(old(self).well_formed_to(parent as _));
                // old(self).well_formed_to_prefix(old(self), hole.pos() as _); 
                self.well_formed_to_prefix(old(self), hole.pos() as _); 
             }
