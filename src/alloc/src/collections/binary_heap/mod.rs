@@ -642,7 +642,6 @@ impl<T: Ord> BinaryHeap<T> {
 
             // assert(self.well_formed_at(old_pos as _));
             proof {
-                // TODO: Need to prove this
                 // The last part of the proof is a little tricky: [old_pos + 1..pos + 1] may have
                 // children of old_hole, need to prove parent is larger, parent >
                 // origal_val at old_pos(before hole) so bigger than its children, need to prove invariant: elem <= parent(elem) <= parent(parent(elem)) for all elem != h; 
@@ -849,6 +848,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// # Safety
     ///
     /// The caller must guarantee that `pos < self.len()`.
+    #[verifier::external_body]
     unsafe fn sift_down_to_bottom(&mut self, mut pos: usize) 
     requires pos < old(self).spec_len(), pos == 0,
     old(self).well_formed_to(pos as _)
@@ -902,6 +902,7 @@ impl<T: Ord> BinaryHeap<T> {
     }
 
     /// Rebuild assuming data[0..start] is still a proper heap.
+    #[verifier::external_body]
     fn rebuild_tail(&mut self, start: usize)
         requires start <= old(self).spec_len(), old(self).well_formed_to(start as _)
         ensures self.well_formed()
