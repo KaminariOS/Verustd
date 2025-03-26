@@ -20,6 +20,7 @@ use std::marker::PhantomData;
 
 use vstd::prelude::*;
 use vstd::assert_seqs_equal;
+use vstd::modes::tracked_swap;
 
 verus!{
 
@@ -269,11 +270,17 @@ pub assume_specification[ usize::saturating_sub](
 /// [peek\_mut]: BinaryHeap::peek_mut
 // #[stable(feature = "rust1", since = "1.0.0")]
 // #[cfg_attr(not(test), rustc_diagnostic_item = "BinaryHeap")]
+
+
+// An idea: type state for BinaryHeap, BinaryHeap<T, WF> BinaryHeap<T, Immediate>
+// Type state for ghost tokens, better capability?
+
 pub struct BinaryHeap<
     T,
     // #[unstable(feature = "allocator_api", issue = "32838")] 
 > {
     data: Vec<T>,
+    // writePerms: Tracked<Map<nat, WriteToken>>
 }
 
 impl<T: Ord> View for BinaryHeap<T> {
@@ -1061,6 +1068,10 @@ impl<'a, T: 'a> Hole<'a, T> {
         {
         // debug_assert!(pos < data.len());
         // SAFE: pos should be inside the slice
+        
+        
+        // read creates a bitwise copy of T, regardless of whether T is Copy. If T is not Copy, using both the returned value and the value at *src can violate memory safety. Note that assigning to *src counts as a use because it will attempt to drop the value at *src.
+        // write() can be used to overwrite data without causing it to be dropped.
         let elt = ManuallyDrop::new(unsafe { ptr::read(data.get_unchecked(pos)) });
         let len = data.len();
         Hole { elt, pos, len, marker: PhantomData}
@@ -1125,6 +1136,8 @@ impl<'a, T: 'a> Hole<'a, T> {
         self.pos = index;
     }
     
+    // It is possible to enforce the call of this function by passing in and getting out a Tracked
+// token 
     #[verifier::external_body]
     fn pre_drop(&mut self, v: &mut Vec<T>) 
     ensures v == old(v)
