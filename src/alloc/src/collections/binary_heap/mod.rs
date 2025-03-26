@@ -274,7 +274,6 @@ pub struct BinaryHeap<
     // #[unstable(feature = "allocator_api", issue = "32838")] 
 > {
     data: Vec<T>,
-    pub elems: Tracked<Map<nat, T>>,
 }
 
 impl<T: Ord> View for BinaryHeap<T> {
@@ -466,13 +465,13 @@ impl<T: Ord> BinaryHeap<T> {
     pub const fn new() -> (res: BinaryHeap<T>) 
     ensures res.well_formed()
     {
-        BinaryHeap { data: vec![], elems: Tracked(Map::tracked_empty())}
+        BinaryHeap { data: vec![]}
     }
 
     pub fn with_capacity(capacity: usize) -> (s: BinaryHeap<T>) 
     ensures s.well_formed()
     {
-        BinaryHeap { data: Vec::with_capacity(capacity), elems: Tracked(Map::tracked_empty()) }
+        BinaryHeap { data: Vec::with_capacity(capacity)}
     }
 
     pub fn len(&self) -> (len: usize) 
