@@ -576,9 +576,8 @@ impl<T: Ord> BinaryHeap<T> {
         by {
             if i == 0 {
                 reflexive(&self@[0]);
-            } else {
+                } 
             }
-        }
         ;
 
         while hole.pos() > start
@@ -592,13 +591,14 @@ impl<T: Ord> BinaryHeap<T> {
             hole.pos() <= pos,
             old(self).well_formed_to(pos as _),
             pos <= old(self)@.len(), 
-
-            // forall|i: int| 0 <= i <= pos as int && Self::parent_index(i as _) == hole.pos() 
-            //     ==> #[trigger] le(&self@[i], &self.parent(hole.pos() as _)) 
+            pos < self@.len(),
+            forall|i: int| 0 <= i <= pos as int && Self::parent_index(i as _) == hole.pos() 
+                ==> #[trigger] le(&self@[i], &self.parent(hole.pos() as _)) 
             
             ensures hole.pos() <= start || self.well_formed_at(hole.pos() as _)
         // all i is well-formed except hole.pos() 
         {
+            broadcast use transitive, total, reflexive;
             let parent = (hole.pos() - 1) / 2;
 
             // SAFETY: hole.pos() > start >= 0, which means hole.pos() > 0
@@ -650,36 +650,58 @@ impl<T: Ord> BinaryHeap<T> {
                 // child of parent, easy to prove that it must be <= parent <= hole.
                 // Other locations in [old_pos + 1..pos + 1] and [parent + 1..old_pos] are unaffected
 
-            // TODO: Prove this loop invariant
-            // forall|i: int| 0 <= i <= pos as int && Self::parent_index(i as _) == hole.pos() 
-            //     ==> #[trigger] le(&self@[i], &self.parent(hole.pos() as _)) 
+
+            // assert(hole.pos() == parent);
+            assert
+                forall|i: int| 0 <= i <= pos as int && Self::parent_index(i as _) == hole.pos()
+                    implies #[trigger]  le(&self@[i], &self.parent(hole.pos() as _)) 
+            by {
+                    assert( pos < self@.len());
+                    let current = self@[i];
+                    let grandparent_index = Self::parent_index(hole.pos() as _);
+                    let grandparent = self.parent(hole.pos() as _);
+                    let grandparent_old = state_before_move.parent(hole.pos() as _);
+                    // assert(old_pos != 0);
+                    if parent == 0 {
+                        assert(self.parent(i as _) == grandparent);
+                        if i == 0 {
+                            reflexive(&current);
+                        } else if i != old_pos {
+                            assert(state_before_move.well_formed_at(i as _));
+                            // assert(self@[old_pos as _] == state_before_move@[parent as _]); 
+                            // transitive(&current, &self@[old_pos as _], &grandparent);
+                        } 
+                        else {
+                            // total(&self.parent(i as _), &self@[i]);
+                        }
+                    } else {
+                        assert(grandparent_old == grandparent);
+                        assert(state_before_move.well_formed_at(parent as _));
+                        if i == old_pos {
+                            assert(current == state_before_move@[parent as _]);
+                            assert(le(&current, &grandparent));
+                        } else {
+                            // another child of parent 
+                            // assert(i != parent && i != old_pos && i != 0);
+                            // assert(current == state_before_move@[i as _]);
+                            assert(state_before_move.well_formed_at(i as _));
+                            // transitive(&state_before_move@[i as _], &state_before_move@[parent as _], &grandparent_old);
+                        }
+                    }
+                }
+            ;
             
-            // TODO: With the loop invariant above, we can prove that [old_pos  + 1, pos + 1] well_formed after move_to call 
-            // forall|i: int| 0 <= i <= pos as int
-            //     ==> Self::parent_index(i as _) == hole.pos() 
-            //     ==> #[trigger] le(&self@[i], &self.parent(hole.pos() as _)) 
-            //     assert forall |i: int| old_pos + 1 <= i < pos + 1 implies 
-            //         #[trigger] self.well_formed_at(i) 
-            //         by {
-            //         assert(self@[i] == state_before_move@[i] 
-            //         && state_before_move.well_formed_at(i)
-            // //     ==> Self::parent_index(i as _) == old_pos 
-            // //     ==> #[trigger] le(&state_before_move@[i], &state_before_move.parent(hole.pos() as _)) 
-            //         ); 
-            //
-            //             let parent_index = Self::parent_index(i as _); 
-            //             if parent_index == old_pos {
-            //                 transitive(&state_before_move@[i], &state_before_move@[parent_index as _], &state_before_move@[parent as _]); 
-            //             } 
-            //             else if parent_index == parent as int {
-            //                 transitive(&state_before_move@[i], &state_before_move@[parent_index as _], &state_before_move@[old_pos as _]); 
-            //                 // Prove new hole is larger than i by transitive
-            //             }
-            //             else {
-            //                  // assert(self.well_formed_at(i));  
-            //             } 
-            //         };
-                assume(self.well_formed_from_to((old_pos + 1) as _, (pos + 1) as _));
+                assert
+                    forall|i: int| old_pos + 1 <= i < (pos + 1) as int 
+                        implies #[trigger] self.well_formed_at(i as _) 
+                by {
+                    let parent_index = Self::parent_index(i as _);
+                    assert(state_before_move.well_formed_at(i as _));
+                    if parent_index == old_pos {
+                        assert(le(&state_before_move@[i], &state_before_move.parent(Self::parent_index(i as _) as _)));
+                    }                     
+                }
+                assert(self.well_formed_from_to((old_pos + 1) as _, (pos + 1) as _));
 
                 // assert(state_before_move.well_formed_from_to((parent + 1) as _, old_pos as _));
                 // assert(le(&state_before_move@[parent as _], &state_before_move@[old_pos as _])); 
