@@ -2,17 +2,6 @@ use vstd::prelude::*;
 use vstd::modes::tracked_swap;
 verus!{
 
-tracked struct KeepToken;
-
-impl KeepToken {
-    spec fn id(&self) -> int;
-}
-
-tracked struct GiveoutToken;
-
-impl GiveoutToken {
-    spec fn id(&self) -> int;
-}
 
 tracked struct MapWrapper {
     inner_map: Map<nat, WriteToken>
@@ -62,6 +51,17 @@ impl MapWrapper {
     }
 }
 
+tracked struct KeepToken;
+
+impl KeepToken {
+    spec fn id(&self) -> int;
+}
+
+tracked struct GiveoutToken;
+
+impl GiveoutToken {
+    spec fn id(&self) -> int;
+}
 
 tracked struct WriteToken {
     keep: KeepToken,
