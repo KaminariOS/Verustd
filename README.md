@@ -66,6 +66,13 @@ rust_verify src/main.rs --extern=verified_lib -L target/debug/deps --import veri
 ## Verus features 
 The `examples` directory contains small code snippets we write for testing Verus features.
 
+### Verification Developer Experience
+- Develop and debug proofs like programming
+- Refactor specs and proofs like refactoring code 
+- Incrementally prove stronger properties  
+- Linear ghost state, ghost tokens  
+
+
 ## Reference
 1. [Verus Doc](https://verus-lang.github.io/verus/guide/)
 1. [Vstd doc](https://verus-lang.github.io/verus/verusdoc/vstd/)
