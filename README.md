@@ -36,7 +36,22 @@ rust_verify src/main.rs --extern=verified_lib -L target/debug/deps --import veri
 
 ## How Verus can help `std`
 - Ghost code: specifies all safety invariants explicitly and statically checks them 
-- Eliminates debug runtime asserts
+    - Number of safety conditions in STD comments
+        ```bash
+        rg -i --type rust '^\s*//.*safety:' -o | wc -l
+        2475
+        ```
+- Eliminates debug and runtime asserts in STD
+    - Number of runtime assertions:
+        ```bash
+        rg -i --type rust '^(?!\s*//).*assert!' --pcre2 | wc -l
+        9089
+        ```
+    - Number of debug assertions 
+        ```bash 
+        rg -i --type rust '^(?!\s*//).*debug_assert!' --pcre2 | wc -l
+        678
+        ```
 - Removes redundant safety abstractions 
 - Verus by default checks for possible arithmetic overflow/underflow. 
 
