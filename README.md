@@ -72,6 +72,13 @@ The `examples` directory contains small code snippets we write for testing Verus
 - Incrementally prove stronger properties  
 - Linear ghost state, ghost tokens  
 
+## Trusted Computing Base for verifying STD 
+- Rust Compiler 
+- Verus itself including vstd
+- The specifications 
+- All assumptions in the proofs: `admit()`, `assume()`, `#[verifier::external_body]`, `assume_specification` etc
+- An implicit assumption: the internal data structures of the std are only mutated by external code through the public API. It is difficult to enforce this in memory unsafe languages like C/C++ but easy in Rust: if all external Rust code is safe Rust.    
+
 
 ## Reference
 1. [Verus Doc](https://verus-lang.github.io/verus/guide/)
