@@ -58,7 +58,7 @@
   in {
     devShell = mkShell {
       nativeBuildInputs = [
-        pinnedVerus.verus-alloc
+        pinnedVerus.verus
         pinnedVerus.line-count
         pinnedVerus.vargo
         # pinnedRust
