@@ -37,3 +37,9 @@ check-cfg = [
     # of declared features, we therefor expect any feature cfg
     'cfg(feature, values(any()))',
 ]
+
+[dependencies]
+# core = { path = "../core", public = true }
+builtin_macros = { git = "https://github.com/verus-lang/verus", branch = "main" }
+builtin = { git = "https://github.com/verus-lang/verus", branch = "main" }
+vstd = { git = "https://github.com/verus-lang/verus", branch = "main" }

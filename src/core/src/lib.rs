@@ -53,3 +53,5 @@
 // discussion in #50466 for details.
 //
 // This cfg won't affect doc tests.
+
+pub mod str;
