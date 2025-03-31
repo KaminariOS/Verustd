@@ -1,0 +1,194 @@
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+% The preceding line is only needed to identify funding in the first footnote. If that is unneeded, please comment it out.
+% \usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage[hidelinks,colorlinks=true,linkcolor=blue,citecolor=blue]{hyperref}
+\usepackage[backend=biber]{biblatex}
+\addbibresource{cites.bib}
+
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+\begin{document}
+\title{Verifying Rust Standard Library}
+
+\author{\IEEEauthorblockN{Kosumi Chan}
+% \IEEEauthorblockA{\textit{dept. name of organization (of Aff.)} \\
+\textit{The University of North Carolina at
+Chapel Hill}\\
+kosumi@cs.unc.edu
+% City, Country \\
+% }
+\and
+\IEEEauthorblockN{Hu Guo}
+%\IEEEauthorblockA{\textit{dept. name of organization (of Aff.)} \\
+\textit{The University of North Carolina at
+Chapel Hill}\\
+%City, Country \\
+huhu8@cs.unc.edu}
+\maketitle
+
+% \begin{abstract}
+% Rust's \texttt{std::collections} library provides a set of core data structures that are widely used in systems programming. Although Rust's ownership model helps prevent memory-safety errors, it does not alone guarantee full functional correctness or security against logical vulnerabilities. In this project, we propose using Verus, an SMT-based deductive verifier for Rust, to formally specify and verify key operations of \texttt{std::collections}, such as \texttt{Vec} and \texttt{HashMap}. We aim to prove that common operations preserve specified invariants, thus strengthening correctness and security guarantees for downstream Rust applications.
+% \end{abstract}
+
+\begin{IEEEkeywords}
+Verus, Rust, Verification 
+\end{IEEEkeywords}
+
+\section{Introduction}
+Rust\cite{matsakis2014rust} is a modern programming language with an affine type system that checks memory safety at compile time. Its memory safety guarantees, fearless concurrency, and zero-cost abstractions are compelling for systems programming, where safety and performance are both critical. For code whose safety cannot be statically checked by the compiler, Rust provides the \texttt{unsafe} keyword to bypass checks. 
+
+
+Some common idioms include:
+\begin{enumerate}
+    \item \textbf{Minimize and Isolate:} Keep \texttt{unsafe} blocks small and confined to modules or functions that perform low-level operations. 
+    \item \textbf{Encapsulate Unsafe in Safe Abstractions:} Hide \texttt{unsafe} code behind a public, safe API. 
+    \item \textbf{Document Invariants and Assumptions:} Clearly state the assumptions(such as pointer validity or aliasing rules). 
+\end{enumerate}
+
+
+The Rust standard library(std) is a prime example of these idioms in action. Internally, it employs many unsafe operations not only for low-level control but also for performance. All public and private APIs of std are well documented. Usually a user only needs to interact with the safe API of std.  
+
+
+Because std underpins the entire Rust ecosystem, ensuring its safety and correctness is paramount. Manual auditing by library maintainers, dynamic testing and incomplete static analysis can reveal the existence of bugs, but are insufficient to prove correctness. On the other hand, deductive verification can prove that the implementation refines the specification.           
+
+
+In the paper, we explore how deductive verification can formally prove the functional correctness of the implementation of the Rust standard library. We take a modular approach: write formal specifications for a module based on its informal documentation and supplement proofs to help the verifier prove the refinement theorem. Specifically, we use the state-of-the-art deductive program verification tool Verus\cite{verus}. 
+        
+\section{State of the Art for Verifying Rust Program}
+Formal verification of Rust code is an active research area. However, the majority of existing automated verifiers are unable to reason about unsafe code. 
+
+\textbf{Kani}\cite{kani} is a model checker for Rust code. It translates Rust program into an intermediate representation for verification and then invokes CBMC(C Bounded Model Checker)\cite{kroening2023cbmccboundedmodel}, which checks the IR for property violations via symbolic execution and SAT solving. Kani emphasizes soundness over completeness. It requires minimal user annotations and enables push-button verification of safety properties. However, it has limited specification expressiveness compared to deductive verification.   
+
+\textbf{RefinedRust}\cite{RefinedRust} aims to produce foundational proofs of Rust code in the Coq proof assistant. It is a semi-automated deductive verifier that removes most of Rustc from the TCB(Trusted Computing Base). The verification of a simplified \texttt{Vec} implementation takes 22 minutes CPU time on an Apple M1 Max processor due to the blowup caused by the lowering from surface Rust to MIR by Rustc. Currently, it does not support concurrency.       
+
+
+% VeriFast\cite{foroushaani2022modularformalverificationrust} extends a classic separation‑logic verifier to Rust, requiring detailed manual annotations for memory separation
+
+
+\section{Background}
+
+\subsection{Rust}
+\subsubsection{Ownership policy}
+Rust's ownership policy, enforced by its affine type system requires that a memory object must be exclusively owned by a variable at a time. A memory object can be borrowed as references from the owner temporarily. There can be at most one outstanding mutable references or multiple immutable references at a time. The ownership policy is checked by the borrow checker in rustc at compile time.
+
+When the ownership policy upholds, Rust ensures spatial and temporal memory safety. For operations that may break the ownership policy but cannot be checked by the compiler, the programmer has to use the \texttt{unsafe} keyword to mark such code block and take on the responsibility to ensure that the unsafe code does not violate Rust's safety invariants(unsound). Otherwise unsound code may cause undefined behaviors(UB).
+
+\subsubsection{The Rust Standard Library}
+Rust’s standard library is built in layers, each designed for different environments and capabilities:
+\begin{itemize}
+        \item \textbf{core} The \texttt{core} crate is the foundation of Rust. It contains the minimal set of language features and traits that work in any environment—even on bare metal without an operating system.
+        \item \textbf{alloc} The \texttt{alloc} crate builds on core by adding dynamic memory allocation support. It provides heap-based data structures such as \texttt{Box}, \texttt{Vec}, \texttt{String}, and reference-counted pointers (\texttt{Rc}/\texttt{Arc}).
+        \item \textbf{std} The \texttt{std} builds on \texttt{core} and \texttt{alloc} to provide OS-dependent features (threads, I/O, networking).
+\end{itemize}
+
+The hierarchical architecture of the Rust standard library, positions it as the foundational pillar of the Rust ecosystem, enabling cross-environment compatibility—from resource-constrained embedded systems to feature-rich application development. Due to its role in managing low-level system interactions and stringent performance requirements, std extensively employs unsafe code blocks. It encapsulates unsafe implementations with a safe public interface as much as possible. Nevertheless, in the past there have been multiple reported Common Vulnerabilities and Exposures (CVEs)\cite{Qwaz_rust-cve} that can be triggered by invoking a safe function from std. For unsafe code in std, the documentation describes the safety invariants required.   
+
+\subsection{Automated Dedutive Verifition}
+Automated deductive verification is a formal method that employs logical inference and automated theorem proving to mathematically establish the correctness of software, hardware, or protocols against specified properties. Unlike testing, which samples executions, or model checking, which explores finite state spaces, deductive verification employs logical deduction base on Hoare logic to prove system adherence to formal specifications exhaustively. It requires annotating code with preconditions, postconditions, and invariants. An automated dedutive verifier generate verification conditions(VC) from the code and annotations automatically and invokes an SMT(satisfiability modulo theories) solver to check the VC.
+
+\subsection{Verus}
+Verus\cite{verus} is the first deductive Rust verifier that leverages the borrow checker to simplify SMT encoding of verification conditions. Its specification and proof language is also based on Rust itself. 
+
+Verus introduces linear ghost types, inspired by the Iris concurrent separation logic\cite{Iris_contributors_Iris} and the affine type system of Rust. Ghost code including specifications and proofs is written alongside executable code but erased after compilation. Verus does not directly support verification of unsafe code, but its ghost objects, states can be used to reasoning about memory permissions and concurrency.  
+
+Verus implements a comprehensive subset of Rust's language features and has demonstrated scalability in large-scale, complex systems\cite{verus_publications}.
+
+\section{Threat Model}
+We assume that while an adversary is restricted to writing safe code, they can invoke any safe public standard functions with arbitrary arguments. Although Rust's borrow checker already prevents many common memory safety errors (such as data races and use-after-free), it does not guarantee functional correctness or invariants related to data structure behavior. Consequently, our verification targets a class of attacks in which incorrect library logic might be leveraged to corrupt data or cause unexpected behavior.
+
+\begin{itemize}
+\item \textbf{Data-Structure Invariant Violations:} An adversary may trigger key ordering violations or disrupt node relationships in a \texttt{BTreeMap} (e.g., by exploiting an unverified insertion routine that leads to a broken internal structure). If such structural invariants are not formally proven, an attacker could cause lookups or iterations to fail unexpectedly.
+\item \textbf{Potential Concurrency Bugs:} If we pursue partial concurrency verification, adversaries might exploit incomplete synchronization mechanisms or overlooked atomic guarantees. Race conditions could violate internal invariants, allowing inconsistent reads or writes that undermine correctness or even create denial-of-service conditions.
+\end{itemize}
+
+We do not address hardware-level attacks, compiler bugs, or misuse of \texttt{unsafe} Rust blocks external to the data structures being verified. These lie outside our verification scope, as our project focuses on proving correctness within safe Rust and a subset of unsafe Rust by modeling them with axioms. However, ensuring strong functional invariants is an essential step in making Rust standard libraries more robust against adversarial misuse.
+
+\section{Approach}
+
+\subsection{Specification}
+To verify \texttt{Vec} other data structures, we will introduce a combination of preconditions, postconditions, loop invariants, and ghost variables directly into their Rust implementations. For example, \texttt{BTreeMap::insert (key, value)} must preserve order and maintain a valid tree structure to ensure correct searches and iterations. Meanwhile, rebalancing or node-splitting operations must uphold parent-child relationships so that the tree remains valid at every intermediate step. To capture invariants beyond the native checks of Rust, we rely on ghost variables and lemmas, which allow us to encode properties that do not exist at run-time but guide the verifier in proving functional correctness. In any concurrent scenarios, these same ghost annotations can help formalize atomic invariants or concurrency-related postconditions.
+
+\subsection{SMT-Based Deductive Verification}
+
+We embed proof hints (such as function specifications, loop invariants, and ghost variables) directly into the Rust code. Verus then translates both the implementation and our annotations into verification conditions for an SMT solver. Although the solver automates many steps, developers must provide detailed specifications and invariants to guide the verification. This approach differs from so-called “push-button” tools (e.g., certain model checkers), as Verus does not attempt exhaustive state-space exploration by default. Instead, it relies on user-supplied proof elements to discharge correctness conditions. 
+
+Once the solver confirms that all conditions are satisfied, we gain confidence that the annotated invariants hold under valid executions. Rust’s borrow checker further aids verification by guaranteeing memory safety at compile time, allowing us to concentrate on higher-level logic properties rather than low-level pointer correctness.
+
+\subsection{Potential Risks}
+Although Rust’s affine type system provides a strong foundation for memory safety, specifying the logic of a B tree or other complex data structures can still be verbose. If we incorporate concurrency aspects, correctly articulating atomic invariants becomes even more challenging, especially since Verus’s concurrency features may not fully address advanced synchronization patterns. Moreover, large or nested operations (such as node splits in a B-tree) can lead to complex verification conditions that risk solver timeouts. Despite these potential hurdles, our aim is to systematically refine our annotations and approach to keep proof complexity manageable.
+
+\section{Case Studies}
+\subsection{Case Study I: raw_vec}
+\subsection{Case Study II: BinaryHeap}
+\subsection{Case Study III: UTF8 validation}
+
+\section{Evaluation}
+Our primary metrics for success include the thoroughness of verified invariants, the overall annotation effort, and the degree to which concurrency properties (if explored) can be guaranteed. For correctness coverage, we will focus on essential methods in \texttt{Vec} and \texttt{BTreeMap}—for example, \texttt{insert}, \texttt{remove}, and node-splitting operations. The notation effort will be gauged by measuring the ratio of proof-related lines to functional code. If we do explore concurrency proofs, we will track how well our specifications hold under concurrent usage and whether any simplified concurrency wrappers can demonstrate Verus’s capabilities.
+
+\subsection{Mid-Point Evaluation}
+By Week 11 of the 16-week semester, we intend to have at least the core operations of \texttt{Vec} or basic insertion in \texttt{BTreeMap} fully annotated and passing Verus checks, indicating that our approach is technically viable. This midpoint assessment will also help us identify any major solver performance bottlenecks and refine our specification strategies before tackling more sophisticated operations or concurrency.
+
+\subsection{Final Evaluation}
+For the final submission, we plan to present a set of verified operations in \texttt{BTreeMap}, along with any additional results for \texttt{Vec}, time permitting. We will document any attempts to model concurrency, discuss successes or obstacles, and provide a qualitative comparison to other formal verification efforts in Rust. We also intend to analyze whether the annotation overhead is reasonable given the complexity of the operations verified and to highlight any invariants or proof techniques that proved especially valuable for ensuring correctness.
+
+
+\section{Plan of Work}
+\noindent\textbf{Weeks 1--8 (Completed):}
+\begin{itemize}
+\item Verus was installed and tested with small Rust examples.
+\end{itemize}
+
+\noindent\textbf{Week 9--10:}
+\begin{itemize}
+\item Model the allocator APIs with axioms
+\item Resolve any immediate solver errors and refine the approach as needed.
+\item Begin documentation for the final paper.
+\end{itemize}
+
+\noindent\textbf{Week 11--12:}
+\begin{itemize}
+\item Verify the verification of \texttt{insert}, \texttt{remove} and relevant invariants.
+\item Investigate concurrency (if feasible); draft concurrency-related specifications.
+\item Track proof overhead and solver performance.
+\end{itemize}
+
+\noindent\textbf{Week 13:}
+\begin{itemize}
+\item Evaluate proof coverage; identify gaps for the final push.
+\item Draft of major sections of the final paper (methodology, results, limitations).
+\end{itemize}
+
+\noindent\textbf{Week 14--15:}
+\begin{itemize}
+\item Finalize verification of chosen operations and concurrency aspects (if any).
+\item Integrate feedback from peers/instructor.
+\item Complete and polish workshop-style paper.
+\end{itemize}
+
+\noindent\textbf{Week 16:}
+\begin{itemize}
+\item Finalize code artifacts.
+\item Prepare and deliver a class presentation.
+\end{itemize}
+
+\subsection{Goals}
+\noindent\textbf{Minimum Goal:} Prove core \texttt{Vec} operations (push/pop) for basic functional correctness under single-threaded usage.\\
+\textbf{Expected Goal:} Verify a set of \texttt{BTreeMap} operations (insert/remove) with relevant invariants and partial concurrency checks if time allows.\\
+\textbf{Reach Goal:} Thoroughly verify \texttt{BTreeMap} across a broader range of operations, including concurrency invariants.
+
+\section{Who Did What}
+\begin{itemize}
+\item \textbf{Kosumi Chan:} Investigated the background on concurrent separation logic, refined approach for \texttt{BTreeMap} specifications, and authored the concurrency threat model.
+\item \textbf{Hu Guo:} Explored Verus' use of Rust's affine-type system, implemented initial verification of \texttt{Vec} operations, and drafted a pivot strategy for \texttt{BTreeMap}.
+\end{itemize}
+
+
+% \section{References}
+\printbibliography
+\end{document}
