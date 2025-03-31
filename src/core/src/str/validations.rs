@@ -14,10 +14,10 @@ pub struct Utf8Error {
 /// Returns the initial codepoint accumulator for the first byte.
 /// The first byte is special, only want bottom 5 bits for width 2, 4 bits
 /// for width 3, and 3 bits for width 4.
-#[inline]
-const fn utf8_first_byte(byte: u8, width: u32) -> u32 {
-    (byte & (0x7F >> width)) as u32
-}
+// #[inline]
+// const fn utf8_first_byte(byte: u8, width: u32) -> u32 {
+//     (byte & (0x7F >> width)) as u32
+// }
 
 /// Returns the value of `ch` updated with continuation byte `byte`.
 #[inline]
@@ -39,7 +39,7 @@ pub(super) const fn utf8_is_cont_byte(byte: u8) -> bool {
 ///
 /// `bytes` must produce a valid UTF-8-like (UTF-8 or WTF-8) string
 // #[unstable(feature = "str_internals", issue = "none")]
-#[inline]
+// #[inline]
 // pub unsafe fn next_code_point<'a, I: Iterator<Item = &'a u8>>(bytes: &mut I) -> Option<u32> {
 //     // Decode UTF-8
 //     let x = *bytes.next()?;
@@ -151,7 +151,9 @@ pub(super) const fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
     // );
     let align = usize::MAX; 
 
-    while index < len {
+    while index < len 
+
+        {
         let old_offset = index;
         macro_rules! err {
             ($error_len: expr) => {
@@ -224,7 +226,8 @@ pub(super) const fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
                 _ => err!(Some(1)),
             }
             index += 1;
-        } else {
+        } 
+            // else {
             // Ascii case, try to skip forward quickly.
             // When the pointer is aligned, read 2 words of data per iteration
             // until we find a word containing a non-ascii byte.
@@ -253,7 +256,7 @@ pub(super) const fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
             // } else {
             //     index += 1;
             // }
-        }
+        // }
     }
 
     Ok(())
