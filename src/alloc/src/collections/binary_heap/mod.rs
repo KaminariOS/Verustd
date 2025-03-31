@@ -20,7 +20,6 @@ use std::marker::PhantomData;
 
 use vstd::prelude::*;
 use vstd::assert_seqs_equal;
-use vstd::modes::tracked_swap;
 
 verus!{
 
@@ -295,6 +294,10 @@ impl<T: Ord> BinaryHeap<T> {
             self.data.len()
     }
 
+    spec fn in_bound(&self, i: int) -> bool {
+        0 <= i < self.spec_len() as int 
+    }
+
     pub proof fn spec_len_limit(&self) 
         ensures self.spec_len() < isize::MAX
     {
@@ -336,7 +339,7 @@ impl<T: Ord> BinaryHeap<T> {
     }
 
     proof fn max_ensures(&self, i: int) 
-    requires self.well_formed(), 0 <= i < self.spec_len() 
+    requires self.well_formed(), self.in_bound(i) 
     ensures if let Some(max) = self.spec_max() {
          le(&self@[i], &max)
     } else {
