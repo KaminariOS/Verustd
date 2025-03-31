@@ -6,6 +6,8 @@ use vstd::prelude::*;
 
 verus!{
 
+global size_of usize == 8;
+
 pub struct Utf8Error {
     pub(super) valid_up_to: usize,
     pub(super) error_len: Option<u8>,
@@ -20,17 +22,17 @@ pub struct Utf8Error {
 // }
 
 /// Returns the value of `ch` updated with continuation byte `byte`.
-#[inline]
-const fn utf8_acc_cont_byte(ch: u32, byte: u8) -> u32 {
-    (ch << 6) | (byte & CONT_MASK) as u32
-}
+// #[inline]
+// const fn utf8_acc_cont_byte(ch: u32, byte: u8) -> u32 {
+//     (ch << 6) | (byte & CONT_MASK) as u32
+// }
 
 /// Checks whether the byte is a UTF-8 continuation byte (i.e., starts with the
 /// bits `10`).
-#[inline]
-pub(super) const fn utf8_is_cont_byte(byte: u8) -> bool {
-    (byte as i8) < -64
-}
+// #[inline]
+// pub(super) const fn utf8_is_cont_byte(byte: u8) -> bool {
+//     (byte as i8) < -64
+// }
 
 /// Reads the next code point out of a byte iterator (assuming a
 /// UTF-8-like encoding).
@@ -119,11 +121,13 @@ pub(super) const fn utf8_is_cont_byte(byte: u8) -> bool {
 //     Some(ch)
 // }
 
-const NONASCII_MASK: usize = 0x80808080;
+const NONASCII_MASK: usize = 0x8080_8080_8080_8080;
 
 /// Returns `true` if any byte in the word `x` is nonascii (>= 128).
 #[inline]
-const fn contains_nonascii(x: usize) -> bool {
+const fn contains_nonascii(x: usize) -> (res: bool) 
+    ensures res == ((x & NONASCII_MASK) != 0)
+{
     (x & NONASCII_MASK) != 0
 }
 
@@ -152,7 +156,7 @@ pub(super) const fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
     let align = usize::MAX; 
 
     while index < len 
-
+        invariant v.len() == len
         {
         let old_offset = index;
         macro_rules! err {
@@ -227,7 +231,7 @@ pub(super) const fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
             }
             index += 1;
         } 
-            // else {
+            else {
             // Ascii case, try to skip forward quickly.
             // When the pointer is aligned, read 2 words of data per iteration
             // until we find a word containing a non-ascii byte.
@@ -253,17 +257,19 @@ pub(super) const fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
             //     while index < len && v[index] < 128 {
             //         index += 1;
             //     }
-            // } else {
-            //     index += 1;
-            // }
-        // }
+            // } 
+            // else 
+            {
+                index += 1;
+            }
+        }
     }
 
     Ok(())
 }
 
 // https://tools.ietf.org/html/rfc3629
-const UTF8_CHAR_WIDTH: [u8; 256] = [
+pub const UTF8_CHAR_WIDTH: [u8; 256] = [
     // 1  2  3  4  5  6  7  8  9  A  B  C  D  E  F
     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, // 0
     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, // 1
@@ -287,7 +293,9 @@ const UTF8_CHAR_WIDTH: [u8; 256] = [
 // #[unstable(feature = "str_internals", issue = "none")]
 #[must_use]
 #[inline]
-pub const fn utf8_char_width(b: u8) -> usize {
+pub const fn utf8_char_width(b: u8) -> (res: usize) 
+    ensures res == (UTF8_CHAR_WIDTH[b as _] as usize)
+{
     UTF8_CHAR_WIDTH[b as usize] as usize
 }
 

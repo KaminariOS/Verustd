@@ -83,4 +83,16 @@ verus!{
         
 
     }
+
+    fn array_loop(v: &[u8]) {
+        let mut index = 0;
+        let len = v.len();
+        while index < len 
+        invariant v.len() == len
+        {
+            // assert(index < len);
+            let first = v[index];
+            index += 1;
+        }
+    }
 }
