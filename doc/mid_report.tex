@@ -123,9 +123,19 @@ Once the solver confirms that all conditions are satisfied, we gain confidence t
 \subsection{Potential Risks}
 Although Rust’s affine type system provides a strong foundation for memory safety, specifying the logic of a B tree or other complex data structures can still be verbose. If we incorporate concurrency aspects, correctly articulating atomic invariants becomes even more challenging, especially since Verus’s concurrency features may not fully address advanced synchronization patterns. Moreover, large or nested operations (such as node splits in a B-tree) can lead to complex verification conditions that risk solver timeouts. Despite these potential hurdles, our aim is to systematically refine our annotations and approach to keep proof complexity manageable.
 
+\subsection{Challenges and Difficulties}
+\subsubsection{Unsupported features} 
+Verus supports a large subset of Rust language features. However, some commonly used features are still missing. For example, the reasoning of mutable references requires \textbf{prophecy variables}\cite{Prophecy}, which is a work in progress. Most code that involves unsupported features can be rewritten while preserving the original semantics. If rewriting is not feasible, annotating the item with \texttt{#[verifier::external_body]} tells the verifier to ignore it.       
+
+\subsubsection{std is special}
+To the Rust compiler, std is a special crate. It contains std-only language features, compiler intrinsics and other unstable library features that Verus is unlikely to ever support. The oddness of std necessitates code rewriting. Normalizing std would be beneficial for integrating formal verification into the development and build process of std.     
+
+
 \section{Case Studies}
 \subsection{Case Study I: raw_vec}
+Our first verification target is the \texttt{raw_vec} module in the \texttt{alloc} crate. A \texttt{RawVec} is a growable memory buffer, which serves as the basis for other container data structures like \texttt{Vec} and \texttt{VecDeque}. The problem is the logic in \texttt{raw_vec} is trivially simple and its functionality largely depends on the system memory allocator, which is out of our verification scope. One simple safety property we verify is the absence of numeric overflow.The developer left notes in the comment and used defensive programming to prevent an overflow. With ghost code this property is explicit expressed in the code and machine-checked so comments or defensive programming are no longer needed.    
 \subsection{Case Study II: BinaryHeap}
+
 \subsection{Case Study III: UTF8 validation}
 
 \section{Evaluation}
