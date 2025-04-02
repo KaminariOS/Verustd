@@ -14,12 +14,12 @@ To support cross-crate verification, we need to run commands like these:
 
 For the lib crate
 ```
-rust_verify --crate-type=lib --export vl.vir src/lib.rs
+verus --crate-type=lib --export vl.vir src/lib.rs
 ```
 
 For the main crate
 ```
-rust_verify src/main.rs --extern=verified_lib -L target/debug/deps --import verified_lib=../verified_lib/vl.vir
+verus src/main.rs --extern=verified_lib -L target/debug/deps --import verified_lib=../verified_lib/vl.vir
 ```
 
 ## Limitations of Verus
