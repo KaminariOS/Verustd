@@ -128,7 +128,7 @@ Although Rust’s affine type system provides a strong foundation for memory saf
 
 \subsection{Challenges and Difficulties}
 \subsubsection{Unsupported features} 
-Verus supports a large subset of Rust language features. However, some commonly used features are still missing. For example, the reasoning of mutable references requires \textbf{prophecy variables}\cite{Prophecy}, which is a work in progress. Most code that involves unsupported features can be rewritten while preserving the original semantics. If rewriting is not feasible, annotating the item with \texttt{#[verifier::external_body]} tells the verifier to ignore it. The absence of these features does not stem from any inherent limitations within Verus. Rather, these features have yet to be implemented as Verus is currently under development.  
+Verus supports a large subset of Rust language features. However, some commonly used features are still missing. For example, the reasoning of mutable references requires \textbf{prophecy variables}\cite{Prophecy}, which is a work in progress. Most code that involves unsupported features can be rewritten while preserving the original semantics. If rewriting is not feasible, annotating the item with \texttt{\#[verifier::external\_body]} tells the verifier to ignore it. The absence of these features does not stem from any inherent limitations within Verus. Rather, these features have yet to be implemented as Verus is currently under development.  
 
 \subsubsection{std is special}
 To the Rust compiler, std is a special crate. It contains std-only language features, compiler intrinsics and other unstable library features that Verus is unlikely to ever support. The oddness of std necessitates code rewriting. Normalizing std would be beneficial for integrating formal verification into the development and build process of std.     
@@ -137,17 +137,17 @@ To the Rust compiler, std is a special crate. It contains std-only language feat
 Verus does not have direct support for unsafe code, although vstd provides useful abstractions for some unsafe code. Unsafe code is unsafe because the correct usage of it needs to satisfy some safety conditions. The general approach to tackling unsafeness is to model its safety conditions as preconditions, semantics as postconditions and convert unsafe code into safe code.     
 
 \section{Case Studies}
-\subsection{Case Study I: raw_vec}
-Our first verification target is the \texttt{raw_vec} module in the \texttt{alloc} crate. A \texttt{RawVec} is a growable memory buffer, which serves as the basis for other container data structures like \texttt{Vec} and \texttt{VecDeque}. The problem is the logic in \texttt{raw_vec} is trivially simple and its functionality largely depends on the system memory allocator, which is out of our verification scope. One simple safety property we verify is the absence of numeric overflow. The developer left notes in the comment and used defensive programming to prevent an overflow. With ghost code this property is explicit expressed in the code and machine-checked so comments or defensive programming are no longer needed.    
+\subsection{Case Study I: \texttt{raw\_vec}}
+Our first verification target is the \texttt{raw\_vec} module in the \texttt{alloc} crate. A \texttt{RawVec} is a growable memory buffer, which serves as the basis for other container data structures like \texttt{Vec} and \texttt{VecDeque}. The problem is the logic in \texttt{raw\_vec} is trivially simple and its functionality largely depends on the system memory allocator, which is out of our verification scope. One simple safety property we verify is the absence of numeric overflow. The developer left notes in the comment and used defensive programming to prevent an overflow. With ghost code this property is explicit expressed in the code and machine-checked so comments or defensive programming are no longer needed.    
 \subsection{Case Study II: BinaryHeap}
 Data structures like \texttt{BinaryHeap} are ideal targets for formal verification. It has high level properties and its internal implementation is non-trivial. 
 
-Same as \texttt{raw_vec}, we begin with proving simple safety properties: absence of numeric overflow and safety conditions in the comments. This step is straightforward and requires little verification expertise. From the perspective of a programmer, Verus extends Rust with a descriptive language for expressing static constraints. Therefore, this layer of verification has the potential to scale to the whole Rust ecosystem. At least library authors can incrementally verify simple properties of their own code with minimum efforts.     
+Same as \texttt{raw\_vec}, we begin with proving simple safety properties: absence of numeric overflow and safety conditions in the comments. This step is straightforward and requires little verification expertise. From the perspective of a programmer, Verus extends Rust with a descriptive language for expressing static constraints. Therefore, this layer of verification has the potential to scale to the whole Rust ecosystem. At least library authors can incrementally verify simple properties of their own code with minimum efforts.     
 
 Verifying the functional correctness is another level of endeavor. The common steps for verifying any data structures are:
 \begin{enumerate}
    \item Select an abstract model of the target data structure. For example, \texttt{BinaryHeap<T>} can be represented as \texttt{Seq<T>}(an abstract data type from vstd. Seq is an abstract representation of an array)
-   \item Define a well-formedness specification in terms of the abstract model. For example, in a BinaryHeap, both left and right children are less than or equal to their parent. For all pub fn x(&mut self, ...) API, the precondition and postcondition both include well-formedness. 
+   \item Define a well-formedness specification in terms of the abstract model. For example, in a BinaryHeap, both left and right children are less than or equal to their parent. For all pub fn x(\&mut self, ...) API, the precondition and postcondition both include well-formedness. 
    \begin{itemize}
         \item There are usually more than one way to define well-formedness: bottom-up, top-down, iterative, recursive etc. Need to find one that is easy for Verification.
    \end{itemize}
@@ -155,6 +155,21 @@ Verifying the functional correctness is another level of endeavor. The common st
    \item Write proofs to establish the logical connection from preconditions to postconditions. The executable code in the function body can be considered as part of the proof. It is also possible to have proofs without executable code: proof functions in Verus. 
 \end{enumerate}
 
+Following these steps, we formally verify the \texttt{push} method of the \texttt{BinaryHeap}. Other methods can also be verified similarly. The proof-to-code ratio is about 1:1:
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|c|c|c|}
+\hline
+\textbf{Spec} & \textbf{Proof} & \textbf{Exec} \\
+\hline
+131 & 199 & 195 \\
+\hline
+131 & 199 & 195 \\
+\hline
+\end{tabular}
+\caption{Line count}
+\end{table}
 % Formal verification of 
 
 
