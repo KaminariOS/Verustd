@@ -136,6 +136,11 @@ To the Rust compiler, std is a special crate. It contains std-only language feat
 \subsubsection{Unsafe code}
 Verus does not have direct support for unsafe code, although vstd provides useful abstractions for some unsafe code. Unsafe code is unsafe because the correct usage of it needs to satisfy some safety conditions. The general approach to tackling unsafeness is to model its safety conditions as preconditions, semantics as postconditions and convert unsafe code into safe code.     
 
+\subsubsection{Incomplete External Specifications for std in vstd}
+Modules in std often imports traits, functions and types from other modules. Ideally all modules get verified and expose public specifications for other modules to use. In practice we limit our verification scope to the current module and make assumptions(external specifications) about other modules. 
+
+Vstd provides external specifications for a basic subset of std. For std items not in vstd, we need to come up with our own external specifications. Not all external items can be handled this way. For example, reasoning of types with interior mutability, raw pointer memory access and concurrency require adding some linear ghost state to the function signature.   
+
 \section{Case Studies}
 \subsection{Case Study I: \texttt{raw\_vec}}
 Our first verification target is the \texttt{raw\_vec} module in the \texttt{alloc} crate. A \texttt{RawVec} is a growable memory buffer, which serves as the basis for other container data structures like \texttt{Vec} and \texttt{VecDeque}. The problem is the logic in \texttt{raw\_vec} is trivially simple and its functionality largely depends on the system memory allocator, which is out of our verification scope. One simple safety property we verify is the absence of numeric overflow. The developer left notes in the comment and used defensive programming to prevent an overflow. With ghost code this property is explicit expressed in the code and machine-checked so comments or defensive programming are no longer needed.    
@@ -171,7 +176,8 @@ Following these steps, we formally verify the \texttt{push} method of the \textt
 \caption{Line count}
 \end{table}
 % Formal verification of 
-
+\subsubsection{Handling of Unsafe Code}
+The \texttt{BinaryHeap} in std is based on the \texttt{Vec} data structures, which is external for our verification. The Verus standard library \texttt{vstd} provides external specifications and proofs for \texttt{Vec}. In principle, \texttt{BinaryHeap} can be implemented completely in safe Rust. However, the actual implementation leverages unsafe raw pointer access to avoid unnecessary memory copy operations. In general verifying raw pointer operations requires the application of linear ghost permissions like \texttt{PointsTo}. In the case of \texttt{BinaryHeap}, since all raw pointer code sections are small and well defined, we choose to trust them and model the semantics with assumptions.        
 
 \subsection{Case Study III: UTF8 validation}
 
