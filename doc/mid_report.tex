@@ -177,7 +177,7 @@ Following these steps, we formally verify the \texttt{push} method of the \textt
 \end{table}
 % Formal verification of 
 \subsubsection{Handling of Unsafe Code}
-The \texttt{BinaryHeap} in std is based on the \texttt{Vec} data structures, which is external for our verification. The Verus standard library \texttt{vstd} provides external specifications and proofs for \texttt{Vec}. In principle, \texttt{BinaryHeap} can be implemented completely in safe Rust. However, the actual implementation leverages unsafe raw pointer access to avoid unnecessary memory copy operations. In general verifying raw pointer operations requires the application of linear ghost permissions like \texttt{PointsTo}. In the case of \texttt{BinaryHeap}, since all raw pointer code sections are small and well defined, we choose to trust them and model the semantics with assumptions.        
+The \texttt{BinaryHeap} in std is based on the \texttt{Vec} data structures, which is external for our verification. The Verus standard library \texttt{vstd} provides external specifications and proofs for \texttt{Vec}. In principle, \texttt{BinaryHeap} can be implemented completely in safe Rust. However, the actual implementation leverages unsafe raw pointer access to avoid unnecessary memory copy operations. In general verifying raw pointer operations requires the application of linear ghost permissions like \texttt{PointsTo}. In the case of \texttt{BinaryHeap}, since all raw pointer code sections are small and well defined, we choose to trust them and model the semantics with assumptions. It is sound because we add safety conditions to the preconditions of unsafe functions.          
 
 \subsection{Case Study III: UTF8 validation}
 
