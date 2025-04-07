@@ -90,7 +90,7 @@ Rust’s standard library is built in layers, each designed for different enviro
 The hierarchical architecture of the Rust standard library, positions it as the foundational pillar of the Rust ecosystem, enabling cross-environment compatibility—from resource-constrained embedded systems to feature-rich application development. Due to its role in managing low-level system interactions and stringent performance requirements, std extensively employs unsafe code blocks. It encapsulates unsafe implementations with a safe public interface as much as possible. Nevertheless, in the past there have been multiple reported Common Vulnerabilities and Exposures (CVEs)\cite{Qwaz_rust-cve} that can be triggered by invoking a safe function from std. For unsafe code in std, the documentation describes the safety invariants required.   
 
 \subsection{Automated Dedutive Verifition}
-Automated deductive verification is a formal method that employs logical inference and automated theorem proving to mathematically establish the correctness of software, hardware, or protocols against specified properties. Unlike testing, which samples executions, or model checking, which explores finite state spaces, deductive verification employs logical deduction base on Hoare logic to prove system adherence to formal specifications exhaustively. It requires annotating code with preconditions, postconditions, and invariants. An automated dedutive verifier generate verification conditions(VC) from the code and annotations automatically and invokes an SMT(satisfiability modulo theories) solver to check the VC.
+Automated deductive verification is a formal method that employs logical inference and automated theorem proving to mathematically establish the correctness of software, hardware, or protocols against specified properties. Unlike testing, which samples executions, or model checking, which explores finite state spaces, deductive verification employs logical deduction base on Hoare logic to prove system adherence to formal specifications exhaustively. It requires annotating code with preconditions, postconditions, and invariants. An automated deductive verifier generates verification conditions(VC) from the code and annotations automatically and invokes an SMT(satisfiability modulo theories) solver to check the VC.
 
 \subsection{Verus}
 Verus\cite{verus} is the first deductive Rust verifier that leverages the borrow checker to simplify SMT encoding of verification conditions. Its specification and proof language is also based on Rust itself. 
@@ -100,7 +100,7 @@ Verus introduces linear ghost types, inspired by the Iris concurrent separation 
 Verus implements a comprehensive subset of Rust's language features and has demonstrated scalability in large-scale, complex systems\cite{verus_publications}.
 
 \subsubsection{vstd}
-vstd is the "standard library" for Verus. It consists of commonly used specifications, proofs and runtime functionality.vstd serves as the infrastructure for verification, in the same way that std serves as the infrastructure for execution.     
+Vstd is the "standard library" for Verus. It consists of commonly used specifications, proofs and runtime functionality. Vstd serves as the infrastructure for verification, in the same way that std serves as the infrastructure for execution.     
 
 \section{Threat Model}
 We assume that while an adversary is restricted to writing safe code, they can invoke any safe public standard functions with arbitrary arguments. Although Rust's borrow checker already prevents many common memory safety errors (such as data races and use-after-free), it does not guarantee functional correctness or invariants related to data structure behavior. Consequently, our verification targets a class of attacks in which incorrect library logic might be leveraged to corrupt data or cause unexpected behavior.
@@ -241,6 +241,11 @@ For the final submission, we plan to present a set of verified operations in \te
 \item \textbf{Hu Guo:} Explored Verus' use of Rust's affine-type system, implemented initial verification of \texttt{Vec} operations, and drafted a pivot strategy for \texttt{BTreeMap}.
 \end{itemize}
 
+\section{Discussion}
+Language-based safety 
+RFL 
+Kernel crate 
+Theusus OS 
 
 % \section{References}
 \printbibliography
