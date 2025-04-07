@@ -59,6 +59,15 @@ Because std underpins the entire Rust ecosystem, ensuring its safety and correct
 
 
 In the paper, we explore how deductive verification can formally prove the functional correctness of the implementation of the Rust standard library. We take a modular approach: write formal specifications for a module based on its informal documentation and supplement proofs to help the verifier prove the refinement theorem. Specifically, we use the state-of-the-art deductive program verification tool Verus\cite{verus}. 
+
+\subsection{Contributions}
+We make the following contributions:
+\begin{itemize}
+        \item We propose an incremental approach for specifying and proving properties of the standard library code.
+        \item We formally verify the functional correctness of the \texttt{push} method implementation of \texttt{BinaryHeap} data structure in std.
+        \item We explore how formal specification and automated verification can enhance and enrich the public interface of std. 
+        \item This project is at \href{https://github.com/KaminariOS/verust}{https://github.com/KaminariOS/verust}.
+\end{itemize}
         
 \section{State of the Art for Verifying Rust Program}
 Formal verification of Rust code is an active research area. However, the majority of existing automated verifiers\cite{Prusti,Creusot} are unable to reason about unsafe code. 
@@ -143,7 +152,9 @@ Vstd provides external specifications for a basic subset of std. For std items n
 
 \section{Case Studies}
 \subsection{Case Study I: \texttt{raw\_vec}}
-Our first verification target is the \texttt{raw\_vec} module in the \texttt{alloc} crate. A \texttt{RawVec} is a growable memory buffer, which serves as the basis for other container data structures like \texttt{Vec} and \texttt{VecDeque}. The problem is the logic in \texttt{raw\_vec} is trivially simple and its functionality largely depends on the system memory allocator, which is out of our verification scope. One simple safety property we verify is the absence of numeric overflow. The developer left notes in the comment and used defensive programming to prevent an overflow. With ghost code this property is explicit expressed in the code and machine-checked so comments or defensive programming are no longer needed.    
+Our first verification target is the \texttt{raw\_vec} module in the \texttt{alloc} crate. A \texttt{RawVec} is a growable memory buffer, which serves as the basis for other container data structures like \texttt{Vec} and \texttt{VecDeque}. The problem is the logic in \texttt{raw\_vec} is trivially simple and its functionality largely depends on the system memory allocator, which is out of our verification scope. One simple safety property we verify is the absence of numeric overflow/underflow. Another safety property is the validity of type layout(size and alignment). 
+
+The developer left notes in the documentation and used defensive programming(assertions and comments) to prevent an overflow/underflow. With ghost code this property is explicit expressed in the code and machine-checked so comments or defensive programming are no longer needed.    
 \subsection{Case Study II: BinaryHeap}
 Data structures like \texttt{BinaryHeap} are ideal targets for formal verification. It has high level properties and its internal implementation is non-trivial. 
 
@@ -242,7 +253,11 @@ For the final submission, we plan to present a set of verified operations in \te
 \end{itemize}
 
 \section{Discussion}
-Language-based safety 
+\subsection{Language-based Safety}
+TCB(transient execution attack, compiler bugs)
+non-adversarial model 
+no-cheating mode 
+
 RFL 
 Kernel crate 
 Theusus OS 
