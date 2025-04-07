@@ -124,3 +124,37 @@ articleno = {45},
 numpages = {32},
 keywords = {Iris, Prophecy variables, linearizability, logical atomicity, separation logic}
 }
+
+@inproceedings{Prusti,
+author = {Astrauskas, Vytautas and B\'{\i}l\'{y}, Aurel and Fiala, Jon\'{a}\v{s} and Grannan, Zachary and Matheja, Christoph and M\"{u}ller, Peter and Poli, Federico and Summers, Alexander J.},
+title = {The Prusti Project: Formal Verification for&nbsp;Rust},
+year = {2022},
+isbn = {978-3-031-06772-3},
+publisher = {Springer-Verlag},
+address = {Berlin, Heidelberg},
+url = {https://doi.org/10.1007/978-3-031-06773-0_5},
+doi = {10.1007/978-3-031-06773-0_5},
+abstract = {Rust is a modern systems programming language designed to offer both performance and static safety. A key distinguishing feature is a strong type system, which enforces by default that memory is either shared or mutable, but never both. This guarantee is used to prevent common pitfalls such as memory errors and data races. It can also be used to greatly simplify formal verification, as we demonstrated by developing the Prusti verifier, which can verify rich correctness properties of Rust programs with a very modest annotation overhead. In this paper, we provide an overview of the Prusti project. We outline its main design goals, illustrate examples of its use, and discuss important outcomes from the perspectives of a user, a verification expert, and a tool developer.},
+booktitle = {NASA Formal Methods: 14th International Symposium, NFM 2022, Pasadena, CA, USA, May 24–27, 2022, Proceedings},
+pages = {88–108},
+numpages = {21},
+keywords = {Separation logic, Deductive verification, Rust},
+location = {Pasadena, CA, USA}
+}
+
+@inproceedings{Creusot,
+author = {Denis, Xavier and Jourdan, Jacques-Henri and March\'{e}, Claude},
+title = {Creusot: A&nbsp;Foundry for&nbsp;the&nbsp;Deductive Verification of&nbsp;Rust Programs},
+year = {2022},
+isbn = {978-3-031-17243-4},
+publisher = {Springer-Verlag},
+address = {Berlin, Heidelberg},
+url = {https://doi.org/10.1007/978-3-031-17244-1_6},
+doi = {10.1007/978-3-031-17244-1_6},
+abstract = {Rust is a fairly recent programming language for system programming, bringing static guarantees of memory safety through a strict ownership policy. The strong guarantees brought by this feature opens promising progress for deductive verification, which aims at proving the conformity of Rust code with respect to a specification of its intended behavior. We present the foundations of Creusot, a tool for the formal specification and deductive verification of Rust code. A first originality comes from Creusot’s specification language, which features a notion of prophecy to reason about memory mutation, working in harmony with Rust’s ownership system. A second originality is how Creusot builds upon Rust trait system to provide several advanced abstraction features.},
+booktitle = {Formal Methods  and Software Engineering: 23rd International Conference on Formal Engineering Methods, ICFEM 2022, Madrid, Spain, October 24–27, 2022, Proceedings},
+pages = {90–105},
+numpages = {16},
+keywords = {Rust programming language, Deductive program verification, Aliasing and ownership, Prophecies, Traits},
+location = {Madrid, Spain}
+}
