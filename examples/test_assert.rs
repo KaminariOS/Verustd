@@ -1,4 +1,4 @@
-use vstd::prelude::verus;
+use vstd::prelude::*;
 use builtin::SpecOrd;
 verus!{
 
