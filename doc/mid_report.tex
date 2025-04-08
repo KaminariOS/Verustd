@@ -229,11 +229,11 @@ Same as \texttt{raw\_vec}, we begin with proving simple safety properties: absen
 Verifying the functional correctness is another level of endeavor. The common steps for verifying any data structures are:
 \begin{enumerate}
    \item Select an abstract model of the target data structure. For example, \texttt{BinaryHeap<T>} can be represented as \texttt{Seq<T>}(an abstract data type from vstd. Seq is an abstract representation of an array)
-   \item Define a well-formedness specification in terms of the abstract model. For example, in a BinaryHeap, both left and right children are less than or equal to their parent. For all pub fn x(\&mut self, ...) API, the precondition and postcondition both include well-formedness. 
+   \item Define a well-formedness specification in terms of the abstract model. For example, in a BinaryHeap, both left and right children are less than or equal to their parent. For all public mutable API like \texttt{pub fn x(\&mut self, ...)}, the precondition and postcondition should both include well-formedness. 
    \begin{itemize}
         \item There are usually more than one way to define well-formedness: bottom-up, top-down, iterative, recursive etc. Need to find one that is easy for Verification.
    \end{itemize}
-   \item Add preconditions and postconditions to methods of the target struct. For example, see listing~\ref{4}.  
+   \item Add preconditions and postconditions to methods of the target struct to describe the semantics of the target method. For example, see listing~\ref{4}.  
    \item Write proofs to establish the logical connection from preconditions to postconditions. The executable code in the function body can be considered as part of the proof. It is also possible to have proofs without executable code: proof functions in Verus. 
 \end{enumerate}
 
@@ -257,6 +257,7 @@ Following these steps, we formally verify the \texttt{push} method of the \textt
 The \texttt{BinaryHeap} in std is based on the \texttt{Vec} data structures, which is external for our verification. The Verus standard library \texttt{vstd} provides external specifications and proofs for \texttt{Vec}. In principle, \texttt{BinaryHeap} can be implemented completely in safe Rust. However, the actual implementation leverages unsafe raw pointer access to avoid unnecessary memory copy operations. In general verifying raw pointer operations requires the application of linear ghost permissions like \texttt{PointsTo}. In the case of \texttt{BinaryHeap}, since all raw pointer code sections are small and well defined, we choose to trust them and model the semantics with assumptions. It is sound because we add safety conditions to the preconditions of unsafe functions.          
 
 \subsection{Case Study III: UTF8 validation}
+\subsection{Verification Developer Experience}
 
 \section{Evaluation}
 Our primary metrics for success include the thoroughness of verified invariants, the overall annotation effort, and the degree to which concurrency properties (if explored) can be guaranteed. For correctness coverage, we will focus on essential methods in \texttt{Vec} and \texttt{BTreeMap}—for example, \texttt{insert}, \texttt{remove}, and node-splitting operations. The notation effort will be gauged by measuring the ratio of proof-related lines to functional code. If we do explore concurrency proofs, we will track how well our specifications hold under concurrent usage and whether any simplified concurrency wrappers can demonstrate Verus’s capabilities.
@@ -335,6 +336,7 @@ Challenges in ensuring the safety of adversarial safe Rust code
 TCB(transient execution attack, compiler bugs)
 
 
+\subsection{Verification-based Safety}
 no-cheating mode 
 Write proofs to squeeze more performance and flexibility
 minimize extralingual runtime for safety 
