@@ -5,6 +5,7 @@
 \usepackage{amsmath,amssymb,amsfonts}
 \usepackage{algorithmic}
 \usepackage{graphicx}
+\usepackage{booktabs}
 \usepackage{textcomp}
 \usepackage{xcolor}
 \usepackage{listings, listings-rust}
@@ -122,7 +123,22 @@ Rust’s standard library is built in layers, each designed for different enviro
         \item \textbf{std} The \texttt{std} builds on \texttt{core} and \texttt{alloc} to provide OS-dependent features (threads, I/O, networking).
 \end{itemize}
 
-The hierarchical architecture of the Rust standard library, positions it as the foundational pillar of the Rust ecosystem, enabling cross-environment compatibility—from resource-constrained embedded systems to feature-rich application development. Due to its role in managing low-level system interactions and stringent performance requirements, std extensively employs unsafe code blocks. It encapsulates unsafe implementations with a safe public interface as much as possible. Nevertheless, in the past there have been multiple reported Common Vulnerabilities and Exposures (CVEs)\cite{Qwaz_rust-cve} that can be triggered by invoking a safe function from std. For unsafe code in std, the documentation describes the safety invariants required.   
+The hierarchical architecture of the Rust standard library, positions it as the foundational pillar of the Rust ecosystem, enabling cross-environment compatibility—from resource-constrained embedded systems to feature-rich application development. Due to its role in managing low-level system interactions and stringent performance requirements, std extensively employs unsafe code blocks. It encapsulates unsafe implementations with a safe public interface as much as possible. Nevertheless, in the past there have been multiple reported Common Vulnerabilities and Exposures (CVEs)\cite{Qwaz_rust-cve} that can be triggered by invoking a safe function from std. For unsafe code in std, the documentation describes the safety invariants required and internally runtime assertions are put at certain program points, as shown in Table~\ref{tab:assertion_counts}.   
+
+\begin{table}[htbp]
+\centering
+\begin{tabular}{l r}
+\toprule
+\textbf{Metric} & \textbf{Count} \\
+\midrule
+Safety conditions in STD comments & 2475 \\
+Runtime assertions & 9089 \\
+Debug assertions & 678 \\
+\bottomrule
+\end{tabular}
+\caption{Assertion counts in the Standard Library}
+\label{tab:assertion_counts}
+\end{table}
 
 \subsection{Automated Dedutive Verifition}
 Automated deductive verification is a formal method that employs logical inference and automated theorem proving to mathematically establish the correctness of software, hardware, or protocols against specified properties. Unlike testing, which samples executions, or model checking, which explores finite state spaces, deductive verification employs logical deduction base on Hoare logic to prove system adherence to formal specifications exhaustively. It requires annotating code with preconditions, postconditions, and invariants. An automated deductive verifier generates verification conditions(VC) from the code and annotations automatically and invokes an SMT(satisfiability modulo theories) solver to check the VC.
@@ -237,7 +253,7 @@ Verifying the functional correctness is another level of endeavor. The common st
    \item Write proofs to establish the logical connection from preconditions to postconditions. The executable code in the function body can be considered as part of the proof. It is also possible to have proofs without executable code: proof functions in Verus. 
 \end{enumerate}
 
-Following these steps, we formally verify the \texttt{push} method of the \texttt{BinaryHeap}. Other methods can also be verified similarly. The proof-to-code ratio is about 1:1:
+Following these steps, we formally verify the \texttt{push} method of the \texttt{BinaryHeap}. Other methods can also be verified similarly. The proof-to-code ratio is about 1:1~\ref{Line count}:
 
 \begin{table}[h]
 \centering
@@ -251,6 +267,7 @@ Following these steps, we formally verify the \texttt{push} method of the \textt
 \hline
 \end{tabular}
 \caption{Line count}
+\label{Line count}
 \end{table}
 % Formal verification of 
 \subsubsection{Handling of Unsafe Code}
