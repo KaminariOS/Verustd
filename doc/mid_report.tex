@@ -89,7 +89,7 @@ In the paper, we explore how deductive verification can formally prove the funct
 \subsection{Contributions}
 We make the following contributions:
 \begin{itemize}
-        \item We propose an incremental approach for specifying and proving properties of the standard library code.
+        \item We propose an incremental approach to specifying and proving properties of the standard library code.
         \item We formally verify the functional correctness of the \texttt{push} method implementation of \texttt{BinaryHeap} data structure in std.
         \item We explore how formal specification and automated verification can enhance and enrich the public interface of std. 
         \item This project is at \href{https://github.com/KaminariOS/verust}{https://github.com/KaminariOS/verust}.
@@ -130,9 +130,9 @@ Automated deductive verification is a formal method that employs logical inferen
 \subsection{Verus}
 Verus\cite{verus} is the first deductive Rust verifier that leverages the borrow checker to simplify SMT encoding of verification conditions. Its specification and proof language is also based on Rust itself. 
 
-Verus introduces linear ghost types, inspired by the Iris concurrent separation logic\cite{Iris_contributors_Iris} and the affine type system of Rust. Ghost code including specifications and proofs is written alongside executable code but erased after compilation. Verus does not directly support verification of unsafe code, but it has ghost state that can be used to reason about interior mutability, memory permissions and concurrency.  
+Verus introduces linear ghost types, inspired by the Iris concurrent separation logic\cite{Iris_contributors_Iris} and the affine type system of Rust. Ghost code including specifications and proofs is written alongside executable code but erased after compilation. Verus does not directly support verification of unsafe code, but it has ghost state and invariant types that can be used to reason about interior mutability, memory permissions and concurrency(VerusSync).  
 
-Verus implements a comprehensive subset of Rust's language features and has demonstrated scalability in large-scale, complex systems\cite{verus_publications}.
+Verus supports a comprehensive subset of Rust's language features and has demonstrated scalability in large-scale, complex systems\cite{verus_publications}.
 
 \subsubsection{vstd}
 Vstd is the "standard library" for Verus. It consists of commonly used specifications, proofs and runtime functionality. Vstd serves as the infrastructure for verification, in the same way that std serves as the infrastructure for execution.     
@@ -181,9 +181,10 @@ To the Rust compiler, std is a special crate. It contains std-only language feat
     }
 \end{lstlisting}
 
-\begin{lstlisting}[language=Rust,style=colouredRust, caption={a simplified example of converting an unsafe function into a conditionally safe function. We do not need the \texttt{unsafe} keyword if the caller is also verified. The \texttt{external\_body} annotation makes the verifier ignore the function body. The safety condition in the comment is also replaced with a precondition. The \texttt{@} operator is a syntactic sugar that returns the abstract representation of the operand.}, label = {2}]
+\begin{lstlisting}[language=Rust,style=colouredRust, caption={a simplified example of converting an unsafe function into a conditionally safe function. We do not need the \texttt{unsafe} keyword in the function signature if the caller is also verified. The \texttt{external\_body} annotation makes the verifier ignore the function body. The safety condition in the comment is also replaced with a precondition. The \texttt{@} operator is a syntactic sugar that returns the abstract representation of the operand.}, label = {2}]
     #[verifier::external_body]
     pub fn get_unchecked<I>(&self, index: usize) -> (res: &I::Output)
+    // usize is unsigned integer so implicitly index >= 0
     requires index < self@.len(),
     ensures *res == self@[index as _]
     {
@@ -313,19 +314,30 @@ For the final submission, we plan to present a set of verified operations in \te
 
 \section{Who Did What}
 \begin{itemize}
-\item \textbf{Kosumi Chan:} Investigated the background on concurrent separation logic, refined approach for \texttt{BTreeMap} specifications, and authored the concurrency threat model.
+\item \textbf{Kosumi Chan:} Investigated the background on concurrent separation logic, refined approach to \texttt{BTreeMap} specifications, and authored the concurrency threat model.
 \item \textbf{Hu Guo:} Explored Verus' use of Rust's affine-type system, implemented initial verification of \texttt{Vec} operations, and drafted a pivot strategy for \texttt{BTreeMap}.
 \end{itemize}
 
 \section{Discussion}
-\subsection{Language-based Safety}
-TCB(transient execution attack, compiler bugs)
-non-adversarial model 
-no-cheating mode 
+Verification is hard but std is a valuable target 
+Verification argumented public interface 
+proof-carrying code 
 
-RFL 
-Kernel crate 
+\subsection{Language-based Safety}
+non-adversarial model 
+RFL kernel crate
+Rex Kernel crate 
 Theusus OS 
+RedLeaf 
+TockOS
+
+Challenges in ensuring the safety of adversarial safe Rust code 
+TCB(transient execution attack, compiler bugs)
+
+
+no-cheating mode 
+Write proofs to squeeze more performance and flexibility
+minimize extralingual runtime for safety 
 
 % \section{References}
 \printbibliography
