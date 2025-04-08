@@ -1,4 +1,4 @@
-# Verust: Verifying Rust Standard Library
+# Verustd: Verifying Rust Standard Library
 
 ## Running Verification
 
@@ -82,7 +82,7 @@ The `examples` directory contains small code snippets we write for testing Verus
 
 ## Reference
 1. [Verus Doc](https://verus-lang.github.io/verus/guide/)
-1. [Vstd doc](https://verus-lang.github.io/verus/verusdoc/vstd/)
+1. [Vstd Doc](https://verus-lang.github.io/verus/verusdoc/vstd/)
 1. [Verification Challenges of Rust std](https://model-checking.github.io/verify-rust-std)
 1. [Kani overview](https://model-checking.github.io/kani-verifier-blog/2023/08/03/turbocharging-rust-code-verification.html)
 1. [The Rust Security Advisory Database](https://rustsec.org/advisories/)
