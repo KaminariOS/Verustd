@@ -7,6 +7,32 @@
 \usepackage{graphicx}
 \usepackage{textcomp}
 \usepackage{xcolor}
+\usepackage{listings, listings-rust}
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2
+}
+\lstset{style=mystyle}
+
 \usepackage[hidelinks,colorlinks=true,linkcolor=blue,citecolor=blue]{hyperref}
 \usepackage[backend=biber]{biblatex}
 \addbibresource{cites.bib}
@@ -140,10 +166,33 @@ Although Rust’s affine type system provides a strong foundation for memory saf
 Verus supports a large subset of Rust language features. However, some commonly used features are still missing. For example, the reasoning of mutable references requires \textbf{prophecy variables}\cite{Prophecy}, which is a work in progress. Most code that involves unsupported features can be rewritten while preserving the original semantics. If rewriting is not feasible, annotating the item with \texttt{\#[verifier::external\_body]} tells the verifier to ignore it. The absence of these features does not stem from any inherent limitations within Verus. Rather, these features have yet to be implemented as Verus is currently under development.  
 
 \subsubsection{std is special}
-To the Rust compiler, std is a special crate. It contains std-only language features, compiler intrinsics and other unstable library features that Verus is unlikely to ever support. The oddness of std necessitates code rewriting. Normalizing std would be beneficial for integrating formal verification into the development and build process of std.     
+To the Rust compiler, std is a special crate. It contains std-only language features, compiler intrinsics and other unstable library features that Verus is unlikely to ever support. The oddness of std necessitates code rewriting. Normalizing std would be beneficial for integrating formal verification into the development and building process of std.     
 
+\begin{lstlisting}[language=Rust,style=colouredRust, caption={a simplified example of the safety condition of an unsafe public function in std}, label = {1}]
+     /// Returns a reference to an element or subslice, without doing bounds checking.
+    /// For a safe alternative see [`get`].
+    /// # Safety
+    /// Calling this method with an out-of-bounds index is *[undefined behavior]*
+    /// even if the resulting reference is not used.
+    pub unsafe fn get_unchecked<I>(&self, index: usize) -> &I::Output
+    {
+        // Raw pointer read  
+        ...
+    }
+\end{lstlisting}
+
+\begin{lstlisting}[language=Rust,style=colouredRust, caption={a simplified example of converting an unsafe function into a conditionally safe function. We do not need the \texttt{unsafe} keyword if the caller is also verified. The \texttt{external\_body} annotation makes the verifier ignore the function body. The safety condition in the comment is also replaced with a precondition. The \texttt{@} operator is a syntactic sugar that returns the abstract representation of the operand.}, label = {2}]
+    #[verifier::external_body]
+    pub fn get_unchecked<I>(&self, index: usize) -> (res: &I::Output)
+    requires index < self@.len(),
+    ensures *res == self@[index as _]
+    {
+        // Raw pointer read  
+        ...
+    }
+\end{lstlisting}
 \subsubsection{Unsafe code}
-Verus does not have direct support for unsafe code, although vstd provides useful abstractions for some unsafe code. Unsafe code is unsafe because the correct usage of it needs to satisfy some safety conditions. The general approach to tackling unsafeness is to model its safety conditions as preconditions, semantics as postconditions and convert unsafe code into safe code.     
+Verus does not have direct support for unsafe code, although vstd provides useful abstractions for some unsafe code. Unsafe code is unsafe because the correct usage of it needs to satisfy some safety conditions. The general approach to tackling unsafeness is to model its safety conditions as preconditions, semantics as postconditions and convert unsafe code into conditionally safe code. Listing~\ref{1} shows an example of an unsafe function and its safety condition in the comments and listing~\ref{2} is the formally specified version of it.      
 
 \subsubsection{Incomplete External Specifications for std in vstd}
 Modules in std often imports traits, functions and types from other modules. Ideally all modules get verified and expose public specifications for other modules to use. In practice we limit our verification scope to the current module and make assumptions(external specifications) about other modules. 
@@ -154,12 +203,20 @@ Vstd provides external specifications for a basic subset of std. For std items n
 \subsection{Case Study I: \texttt{raw\_vec}}
 Our first verification target is the \texttt{raw\_vec} module in the \texttt{alloc} crate. A \texttt{RawVec} is a growable memory buffer, which serves as the basis for other container data structures like \texttt{Vec} and \texttt{VecDeque}. The problem is the logic in \texttt{raw\_vec} is trivially simple and its functionality largely depends on the system memory allocator, which is out of our verification scope. One simple safety property we verify is the absence of numeric overflow/underflow. Another safety property is the validity of type layout(size and alignment). 
 
-The developer left notes in the documentation and used defensive programming(assertions and comments) to prevent an overflow/underflow. With ghost code this property is explicit expressed in the code and machine-checked so comments or defensive programming are no longer needed.    
+The developer left notes in the documentation and used defensive programming(assertions and comments) to prevent an overflow/underflow. With ghost code this property is explicitly expressed in the preconditions and machine-checked so comments or defensive programming are no longer needed.    
 \subsection{Case Study II: BinaryHeap}
 Data structures like \texttt{BinaryHeap} are ideal targets for formal verification. It has high level properties and its internal implementation is non-trivial. 
 
 Same as \texttt{raw\_vec}, we begin with proving simple safety properties: absence of numeric overflow and safety conditions in the comments. This step is straightforward and requires little verification expertise. From the perspective of a programmer, Verus extends Rust with a descriptive language for expressing static constraints. Therefore, this layer of verification has the potential to scale to the whole Rust ecosystem. At least library authors can incrementally verify simple properties of their own code with minimum efforts.     
 
+\begin{lstlisting}[language=Rust,style=colouredRust, caption={The specification of the \texttt{push} method of \texttt{BinaryHeap}.}, label = {3}]
+    pub fn push(&mut self, item: T)
+    requires old(self).well_formed()
+    ensures 
+    self.well_formed(),
+    self@.to_multiset() =~= old(self)@.push(item).to_multiset()
+    {...}
+\end{lstlisting}
 Verifying the functional correctness is another level of endeavor. The common steps for verifying any data structures are:
 \begin{enumerate}
    \item Select an abstract model of the target data structure. For example, \texttt{BinaryHeap<T>} can be represented as \texttt{Seq<T>}(an abstract data type from vstd. Seq is an abstract representation of an array)
@@ -167,7 +224,7 @@ Verifying the functional correctness is another level of endeavor. The common st
    \begin{itemize}
         \item There are usually more than one way to define well-formedness: bottom-up, top-down, iterative, recursive etc. Need to find one that is easy for Verification.
    \end{itemize}
-   \item Add preconditions and postconditions to methods of the target struct.
+   \item Add preconditions and postconditions to methods of the target struct. For example, see listing~\ref{3}.  
    \item Write proofs to establish the logical connection from preconditions to postconditions. The executable code in the function body can be considered as part of the proof. It is also possible to have proofs without executable code: proof functions in Verus. 
 \end{enumerate}
 
