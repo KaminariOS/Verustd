@@ -49,7 +49,7 @@ impl Gas {
 
 fn sum(i: usize, Tracked(gas): Tracked<&mut Gas>) 
     requires 
-        i < 1000,
+        // i < 1000,
         old(gas).0 > i + 1,
         ensures old(gas).0 == gas.0 + i + 1
         {
@@ -62,7 +62,6 @@ fn sum(i: usize, Tracked(gas): Tracked<&mut Gas>)
             invariant gas.0 + 1 + j == old(gas).0,
             old(gas).0 > i + 1,
             j <= i
-            decreases i - j
             {
                 
                 proof {
@@ -143,6 +142,36 @@ impl RecursiveCount {
         }
     }
 
+    
+    // fn sum_digits(n: u64) -> u64 {
+    //     if n == 0 {
+    //         0
+    //     } else {
+    //         // The remainder n % 10 is at most 9.
+    //         // The sum of digits of n/10 will be at most 9 * number of digits, which is very small.
+    //         (n % 10) + sum_digits(n / 10)
+    //     }
+    // }
+
+    fn fib_1(n: u32) -> (res: u32) 
+        decreases n 
+    {
+        match n {
+            0 => 0,
+            1 => 1,
+            _ => {
+                    // Divide 2 to prevent overflow 
+                    let fib_11 = fib_1(n - 1); 
+                    let fib_2 = fib_1(n - 2);
+                    // Add this to prevent overflow
+                    if fib_11 as u64 + fib_2 as u64 > u32::MAX as u64 {
+                        return u32::MAX
+                    }
+                    let res = fib_11 + fib_2;
+                    res
+                },
+        }
+    }
 // fn recursive(x: usize)
 //     decreases x {
 //         recursive_1(x);

@@ -40,7 +40,14 @@ verus src/main.rs --extern=verified_lib -L target/debug/deps --import verified_l
         ```bash
         rg -i --type rust '^\s*//.*safety:' -o | wc -l
         2475
+
         ```
+    - Panic possibility in STD comments 
+        ```bash
+        rg -i '^\s*//[/!]+\s*#\s*Panics' | wc -l
+        397
+        ```
+
 - Eliminates debug and runtime asserts in STD
     - Number of runtime assertions:
         ```bash
