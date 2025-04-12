@@ -28,6 +28,7 @@ verus src/main.rs --extern=verified_lib -L target/debug/deps --import verified_l
 - Deref type conversion not supported
 - Comparison operators for non SMT-arith types not supported
 - Insufficient external specification for `std` in `vstd`
+- Floating point numbers unsupported
 
 ## Difficulties for verification of `std`
 - Language items
