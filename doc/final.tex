@@ -298,7 +298,7 @@ Verus already prevents common source of unwinding such as division by zero. It a
  }
 \end{lstlisting}
 
-Currently, std specifies unwinding conditions in doc comments of the function. Table~\ref{tab:assertion_counts} shows the number of those. Rudra\cite{Rudra}, a static analyzer of Rust code, reveals an exception safety violation bug\cite{CVE-2020-36317} in std, as shown in listing~\ref{5}. The \texttt{retain} method takes a function pointer as an argument and calls it in the middle of unsafe operations. The problem is the function signature of \texttt{f} exposes no information about its runtime properties, even if it is safe Rust only. It may panic, never terminate or overflow the stack. 
+Currently, std specifies unwinding conditions in doc comments of the function. Table~\ref{tab:assertion_counts} shows the number of those. Rudra\cite{Rudra}, a static analyzer of Rust code, reveals an exception safety violation bug\cite{CVE-2020-36317} in std, as shown in listing~\ref{5}. The \texttt{retain} method takes a function pointer as an argument and calls it in the middle of unsafe operations. The problem is the function signature of \texttt{f} exposes no information about its runtime properties. Even if we disallow unsafe code and ensure \texttt{f} is purely safe, it is not enough. It may panic, never terminate or overflow the stack. 
 
 While static analysis tools like Rudra can find safety bugs in Rust at the ecosystem scale automatically, we argue that std is a safety-critical and high-value verification target so preventing bugs in the development phase is more desirable than finding bugs after release. 
 
@@ -350,26 +350,44 @@ impl Gas {
     {}
 }
 
-fn sum(i: usize, Tracked(gas): Tracked<&mut Gas>) 
-    requires 
-        old(gas).0 > i + 1,
-        ensures old(gas).0 == gas.0 + i + 1
-        {
-            proof {
-                gas.consume_func();
-            }
-            let mut j = 0;
-            while j < i 
-            invariant gas.0 + 1 + j == old(gas).0,
-            old(gas).0 > i + 1,
-            j <= i
-            {
-                
-                proof {
-                    gas.consume_loop();
-                }
-                j += 1;
-            }
+#[verifier::loop_isolation(false)]
+fn binary_search(v: &Vec<u64>, k: u64, Tracked(gas): Tracked<&mut Gas>) -> (r: usize)
+    requires
+        forall|i: int, j: int| 0 <= i <= j < v.len() ==> v[i] <= v[j],
+        exists|i: int| 0 <= i < v.len() && k == v[i],
+        old(gas).0 >= v.len()
+    ensures
+        r < v.len(),
+        k == v[r as int],
+        // A conservative approximation of gas consumption
+        old(gas).0 <= gas.0 + v.len()
+{
+
+    proof {
+        gas.consume_func();
+    }
+    let mut i1: usize = 0;
+    let mut i2: usize = v.len() - 1;
+
+    while i1 != i2
+        invariant
+            i2 < v.len(),
+            exists|i: int| i1 <= i <= i2 && k == v[i],
+            // A single line of proof added for proving gas consumption
+            gas.0 + v.len() - (i2 - i1) >= old(gas).0,
+        decreases i2 - i1,
+    {
+        proof {
+            gas.consume_loop();
+        }
+        let ix = i1 + (i2 - i1) / 2;
+        if v[ix] < k {
+            i1 = ix + 1;
+        } else {
+            i2 = ix;
+        }
+    }
+    i1
 }
 \end{lstlisting}
 
@@ -382,7 +400,9 @@ We demonstrate how linear ghost types can be leveraged to argument the function 
 
 Similarly we can define a linear ghost type for tracking max stack length. If we know the max size of a stack frame and the stack size, we can calculate the max stack depth. 
 
-Pure static analysis cannot handle cycles in the call graph or calls to external functions but with a specification-rich function interface we can prove certain unanalyzable runtime behaviors of the code. 
+Pure static analysis cannot handle cycles in the call graph or calls to external functions but with a specification-rich function interface we can prove certain unanalyzable runtime behaviors of the code. Although writing proofs is non-trivial, large language models(LLM) have the potential for proof auto-completion. Fine-tuning LLMs for aiding formal verification\cite{chen2025automatedproofgenerationrust,shefer2025llmsenableverificationmainstream} is an emerging research field.  
+
+The Sel4\cite{sel4} microkernel guarantees the impossibility of kernel stack overflow by disallowing hidden or dynamic stack allocations, and function calls through pointers or recursion. Rust itself has no native dynamic stack allocation so its stack frames are fixed-size based solely on compile‐time constants.
 
 
 Vstd defines a linear ghost type \texttt{PointsTo} that keeps track of the abstract metadata of a raw pointer including provenance, layout and memory content and exposes a safe API for reading and writing using raw pointers.
@@ -404,7 +424,7 @@ Our primary metrics for success include the thoroughness of verified invariants,
 Although formal verification requires verification expertise and significant manual effort, it does not have to be scalable to the whole ecosystem to be useful. Code base that are safety-critical, complex and error-prone should be prioritized for verification. 
 
 Rust std is maintained by Rust experts and well funded so it is possible to integrate formal verification into development.
-There are other std-like crates like Rust for Linux kernel crate and Rex\cite{rax} kernel crate that are suitable for formal verification.  
+There are other std-like crates like Rust for Linux\cite{Rust_for_Linux} kernel crate and Rex\cite{rax} kernel crate that are suitable for formal verification.  
 \subsection{Language-based Safety}
 Even without verification, the Rust compiler can prove memory safety of safe Rust code. Isolation of subsystems based on Rust language safety guarantees\cite{Theusus,Redleaf,TockOS,rax} is an ongoing research topic. 
 
@@ -413,7 +433,7 @@ Existing work on isolation with Rust follows a non-adversarial model because the
 
 \subsection{Verification-based Safety}
 It is an open research question how formal verification can strengthen the safety guarantees of Rust. 
-Ideally we will have a formally verified Rust compiler like CompCertC so that compiler bugs are eliminated and we only rely on the hardware model. Or at least we need an assembly verifier that proves the generated assembly code preserves the memory safety of Rust source code.   
+Ideally we will have a formally verified Rust compiler like CompCertC so that compiler bugs are eliminated and we only rely on the hardware model. Or at least we need an assembly verifier that proves the generated assembly code retains the memory safety property of safe Rust source code.   
 
 We may also require untrusted code to carry proofs of its safety. Verus has a no-cheating mode that forbids assumptions. With no-cheating mode enabled, untrusted code must provide a proof of its safety to pass verification. Proof-carrying code may be able to squeeze more performance and flexibility out of existing isolation mechanisms, and minimize extralingual runtime required for safety. 
 

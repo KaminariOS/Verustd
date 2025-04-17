@@ -172,6 +172,44 @@ impl RecursiveCount {
                 },
         }
     }
+
+#[verifier::loop_isolation(false)]
+fn binary_search(v: &Vec<u64>, k: u64, Tracked(gas): Tracked<&mut Gas>) -> (r: usize)
+    requires
+        forall|i: int, j: int| 0 <= i <= j < v.len() ==> v[i] <= v[j],
+        exists|i: int| 0 <= i < v.len() && k == v[i],
+        old(gas).0 >= v.len()
+    ensures
+        r < v.len(),
+        k == v[r as int],
+        old(gas).0 <= gas.0 + v.len()
+{
+
+    proof {
+        gas.consume_func();
+    }
+    let mut i1: usize = 0;
+    let mut i2: usize = v.len() - 1;
+
+    while i1 != i2
+        invariant
+            i2 < v.len(),
+            exists|i: int| i1 <= i <= i2 && k == v[i],
+            gas.0 + v.len() - (i2 - i1) >= old(gas).0,
+        decreases i2 - i1,
+    {
+        proof {
+            gas.consume_loop();
+        }
+        let ix = i1 + (i2 - i1) / 2;
+        if v[ix] < k {
+            i1 = ix + 1;
+        } else {
+            i2 = ix;
+        }
+    }
+    i1
+}
 // fn recursive(x: usize)
 //     decreases x {
 //         recursive_1(x);
