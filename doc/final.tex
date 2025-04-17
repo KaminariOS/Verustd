@@ -1,0 +1,478 @@
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+% The preceding line is only needed to identify funding in the first footnote. If that is unneeded, please comment it out.
+% \usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{listings, listings-rust}
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2
+}
+\lstset{style=mystyle}
+
+\usepackage[hidelinks,colorlinks=true,linkcolor=blue,citecolor=blue]{hyperref}
+\usepackage[backend=biber]{biblatex}
+\addbibresource{cites.bib}
+
+\usepackage{mathptmx}  % times roman, including math (where possible)
+
+% hopefully embeds all fonts in pdf
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{pslatex}
+
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+\begin{document}
+\title{Verifying Rust Standard Library}
+
+\author{\IEEEauthorblockN{Kosumi Chan}
+% \IEEEauthorblockA{\textit{dept. name of organization (of Aff.)} \\
+\textit{The University of North Carolina at
+Chapel Hill}\\
+kosumi@cs.unc.edu
+% City, Country \\
+% }
+\and
+\IEEEauthorblockN{Hu Guo}
+%\IEEEauthorblockA{\textit{dept. name of organization (of Aff.)} \\
+\textit{The University of North Carolina at
+Chapel Hill}\\
+%City, Country \\
+huhu8@cs.unc.edu}
+\maketitle
+
+% \begin{abstract}
+% Rust's \texttt{std::collections} library provides a set of core data structures that are widely used in systems programming. Although Rust's ownership model helps prevent memory-safety errors, it does not alone guarantee full functional correctness or security against logical vulnerabilities. In this project, we propose using Verus, an SMT-based deductive verifier for Rust, to formally specify and verify key operations of \texttt{std::collections}, such as \texttt{Vec} and \texttt{HashMap}. We aim to prove that common operations preserve specified invariants, thus strengthening correctness and security guarantees for downstream Rust applications.
+% \end{abstract}
+
+\begin{IEEEkeywords}
+Verus, Rust, Verification 
+\end{IEEEkeywords}
+
+\section{Introduction}
+Rust\cite{matsakis2014rust} is a modern programming language with an affine type system that checks memory safety at compile time. Its memory safety guarantees, fearless concurrency, and zero-cost abstractions are compelling for systems programming, where safety and performance are both critical. For code whose safety cannot be statically checked by the compiler, Rust provides the \texttt{unsafe} keyword to bypass checks. 
+
+
+Some common idioms include:
+\begin{enumerate}
+    \item \textbf{Minimize and Isolate:} Keep \texttt{unsafe} blocks small and confined to modules or functions that perform low-level operations. 
+    \item \textbf{Encapsulate Unsafe in Safe Abstractions:} Hide \texttt{unsafe} code behind a public, safe API. 
+    \item \textbf{Document Invariants and Assumptions:} Clearly state the assumptions(such as pointer validity or aliasing rules). 
+\end{enumerate}
+
+
+The Rust standard library(std) is a prime example of these idioms in action. Internally, it employs many unsafe operations not only for low-level control but also for performance. All public and private APIs of std are well documented. Usually a user only needs to interact with the safe API of std.  
+
+
+Because std underpins the entire Rust ecosystem, ensuring its safety and correctness is paramount. Manual auditing by library maintainers, dynamic testing and incomplete static analysis can reveal the existence of bugs, but are insufficient to prove correctness. On the other hand, deductive verification can prove that the implementation refines the specification.           
+
+
+In the paper, we explore how deductive verification can formally prove the functional correctness of the implementation of the Rust standard library. We take a modular approach: write formal specifications for a module based on its informal documentation and supplement proofs to help the verifier prove the refinement theorem. Specifically, we use the state-of-the-art deductive program verification tool Verus\cite{verus}. 
+
+\subsection{Contributions}
+We make the following contributions:
+\begin{itemize}
+        \item We propose an incremental approach to specifying and proving properties of the standard library code.
+        \item We formally verify the functional correctness of the \texttt{push} method implementation of \texttt{BinaryHeap} data structure in std.
+        \item We explore how formal specification and automated verification can enhance and enrich the public interface of std. 
+        \item This project is at \href{https://github.com/KaminariOS/Verustd}{https://github.com/KaminariOS/Verustd}.
+\end{itemize}
+        
+\section{State of the Art for Verifying Rust Program}
+Formal verification of Rust code is an active research area. However, the majority of existing automated verifiers\cite{Prusti,Creusot} are unable to reason about unsafe code. 
+
+\textbf{Kani}\cite{kani} is a model checker for Rust code. It translates Rust program into an intermediate representation for verification and then invokes CBMC(C Bounded Model Checker)\cite{kroening2023cbmccboundedmodel}, which checks the IR for property violations via symbolic execution and SAT solving. Kani emphasizes soundness over completeness. It requires minimal user annotations and enables push-button verification of safety properties. However, it has limited specification expressiveness compared to deductive verification.   
+
+\textbf{RefinedRust}\cite{RefinedRust} aims to produce foundational proofs of Rust code in the Coq proof assistant. It is a semi-automated deductive verifier that removes most of Rustc from the TCB(Trusted Computing Base). The verification of a simplified \texttt{Vec} implementation takes 22 minutes CPU time on an Apple M1 Max processor due to the blowup caused by the lowering from surface Rust to MIR by Rustc. Currently, it does not support concurrency.       
+
+
+% VeriFast\cite{foroushaani2022modularformalverificationrust} extends a classic separation‑logic verifier to Rust, requiring detailed manual annotations for memory separation
+
+
+\section{Background}
+
+\subsection{Rust}
+\subsubsection{Ownership policy}
+Rust's ownership policy, enforced by its affine type system requires that a memory object must be exclusively owned by a variable at a time. A memory object can be borrowed as references from the owner temporarily. There can be at most one outstanding mutable references or multiple immutable references at a time. The ownership policy is checked by the borrow checker in rustc at compile time.
+
+When the ownership policy upholds, Rust ensures spatial and temporal memory safety. For operations that may break the ownership policy but cannot be checked by the compiler, the programmer has to use the \texttt{unsafe} keyword to mark such code block and take on the responsibility to ensure that the unsafe code does not violate Rust's safety invariants(unsound). Otherwise unsound code may cause undefined behaviors(UB).
+
+\subsubsection{The Rust Standard Library}
+Rust’s standard library is built in layers, each designed for different environments and capabilities:
+\begin{itemize}
+        \item \textbf{core} The \texttt{core} crate is the foundation of Rust. It contains the minimal set of language features and traits that work in any environment—even on bare metal without an operating system.
+        \item \textbf{alloc} The \texttt{alloc} crate builds on core by adding dynamic memory allocation support. It provides heap-based data structures such as \texttt{Box}, \texttt{Vec}, \texttt{String}, and reference-counted pointers (\texttt{Rc}/\texttt{Arc}).
+        \item \textbf{std} The \texttt{std} builds on \texttt{core} and \texttt{alloc} to provide OS-dependent features (threads, I/O, networking).
+\end{itemize}
+
+The hierarchical architecture of the Rust standard library, positions it as the foundational pillar of the Rust ecosystem, enabling cross-environment compatibility—from resource-constrained embedded systems to feature-rich application development. Due to its role in managing low-level system interactions and stringent performance requirements, std extensively employs unsafe code blocks. It encapsulates unsafe implementations with a safe public interface as much as possible. Nevertheless, in the past there have been multiple reported Common Vulnerabilities and Exposures (CVEs)\cite{Qwaz_rust-cve} that can be triggered by invoking a safe function from std. For unsafe code in std, the documentation describes the safety invariants required and internally runtime assertions are put at certain program points, as shown in Table~\ref{tab:assertion_counts}.   
+
+\begin{table}[htbp]
+\centering
+\begin{tabular}{l r}
+\toprule
+\textbf{Metric} & \textbf{Count} \\
+\midrule
+Safety conditions in std comments & 2475 \\
+Runtime assertions & 9089 \\
+Debug assertions & 678 \\
+Unwinding conditions in std comments & 397 \\
+\bottomrule
+\end{tabular}
+\caption{Assertion counts and informal function contracts in the Standard Library}
+\label{tab:assertion_counts}
+\end{table}
+
+\subsection{Automated Dedutive Verifition}
+Automated deductive verification is a formal method that employs logical inference and automated theorem proving to mathematically establish the correctness of software, hardware, or protocols against specified properties. Unlike testing, which samples executions, or model checking, which explores finite state spaces, deductive verification employs logical deduction base on Hoare logic to prove system adherence to formal specifications exhaustively. It requires annotating code with preconditions, postconditions, and invariants. An automated deductive verifier generates verification conditions(VC) from the code and annotations automatically and invokes an SMT(satisfiability modulo theories) solver to check the VCs.
+
+\subsection{Verus}
+Verus\cite{verus} is the first deductive Rust verifier that trusts the borrow checker of the Rust compiler and leverages the ownership rules to simplify SMT encoding of verification conditions. Together with other optimizations, Verus generates VCs that are an order or two of magnitude smaller\cite{VerifyingConcurrentSystemsCode} than its precursor Linear Dafny\cite{linearDafny} for complex systems. Similar reduction in verification time is also observed. 
+
+Verus's specification and proof language are also based on Rust itself, so it is easier for a Rust programmer to read and write Verus expressions. Ghost code can interleave with executable code, convenient for verifying properties at any program point.   
+
+Verus introduces linear ghost types, inspired by the Iris concurrent separation logic\cite{Iris_contributors_Iris} and the affine type system of Rust. Ghost code including specifications and proofs is written alongside executable code but erased after compilation. Verus does not directly support verification of unsafe code, but it has ghost state and invariant types that can be used to reason about interior mutability, memory permissions and concurrency. In scenarios where multiple parties share mutable access to the same resource in a coordinated manner—thus creating potential unsafe conditions, Verus provides the VerusSync framework, which models these situations as a tokenized state machine.    
+
+Verus supports a comprehensive subset of Rust's language features and has demonstrated scalability in large-scale, complex systems\cite{verus_publications}.
+
+\subsubsection{vstd}
+Vstd is the "standard library" for Verus. It consists of commonly used specifications, proofs and runtime functionality. Vstd serves as the infrastructure for verification, in the same way that std serves as the infrastructure for execution.     
+
+\section{Threat Model}
+We assume that while an adversary is restricted to writing safe code, they can invoke any safe public standard functions with arbitrary arguments. Although Rust's borrow checker already prevents many common memory safety errors (such as data races and use-after-free), it does not guarantee functional correctness or invariants related to data structure behavior. Consequently, our verification targets a class of attacks in which incorrect library logic might be leveraged to corrupt data or cause unexpected behavior.
+
+\begin{itemize}
+\item \textbf{Data-Structure Invariant Violations:} An adversary may trigger key ordering violations or disrupt node relationships in a \texttt{BTreeMap} (e.g., by exploiting an unverified insertion routine that leads to a broken internal structure). If such structural invariants are not formally proven, an attacker could cause lookups or iterations to fail unexpectedly.
+\item \textbf{Potential Concurrency Bugs:} If we pursue partial concurrency verification, adversaries might exploit incomplete synchronization mechanisms or overlooked atomic guarantees. Race conditions could violate internal invariants, allowing inconsistent reads or writes that undermine correctness or even create denial-of-service conditions.
+\end{itemize}
+
+We do not address hardware-level attacks, compiler bugs, or misuse of \texttt{unsafe} Rust blocks external to the data structures being verified. These lie outside our verification scope, as our project focuses on proving correctness within safe Rust and a subset of unsafe Rust by modeling them with axioms. However, ensuring strong functional invariants is an essential step in making Rust standard libraries more robust against adversarial misuse.
+
+\section{Approach}
+
+\subsection{Specification}
+To verify \texttt{Vec} other data structures, we will introduce a combination of preconditions, postconditions, loop invariants, and ghost variables directly into their Rust implementations. For example, \texttt{BTreeMap::insert (key, value)} must preserve order and maintain a valid tree structure to ensure correct searches and iterations. Meanwhile, rebalancing or node-splitting operations must uphold parent-child relationships so that the tree remains valid at every intermediate step. To capture invariants beyond the native checks of Rust, we rely on ghost variables and lemmas, which allow us to encode properties that do not exist at run-time but guide the verifier in proving functional correctness. In any concurrent scenarios, these same ghost annotations can help formalize atomic invariants or concurrency-related postconditions.
+
+\subsection{SMT-Based Deductive Verification}
+
+We embed proof hints (such as function specifications, loop invariants, and ghost variables) directly into the Rust code. Verus then translates both the implementation and our annotations into verification conditions for an SMT solver. Although the solver automates many steps, developers must provide detailed specifications and invariants to guide the verification. This approach differs from so-called “push-button” tools (e.g., certain model checkers), as Verus does not attempt exhaustive state-space exploration by default. Instead, it relies on user-supplied proof elements to discharge correctness conditions. 
+
+Once the solver confirms that all conditions are satisfied, we gain confidence that the annotated invariants hold under valid executions. Rust’s borrow checker further aids verification by guaranteeing memory safety at compile time, allowing us to concentrate on higher-level logic properties rather than low-level pointer correctness.
+
+\subsection{Potential Risks}
+Although Rust’s affine type system provides a strong foundation for memory safety, specifying the logic of a B tree or other complex data structures can still be verbose. If we incorporate concurrency aspects, correctly articulating atomic invariants becomes even more challenging, especially since Verus’s concurrency features may not fully address advanced synchronization patterns. Moreover, large or nested operations (such as node splits in a B-tree) can lead to complex verification conditions that risk solver timeouts. Despite these potential hurdles, our aim is to systematically refine our annotations and approach to keep proof complexity manageable.
+
+\subsection{Challenges and Difficulties}
+\subsubsection{Unsupported features} 
+Verus supports a large subset of Rust language features. However, some commonly used features are still missing. For example, the reasoning of mutable references requires \textbf{prophecy variables}\cite{Prophecy}, which is a work in progress. Most code that involves unsupported features can be rewritten while preserving the original semantics. If rewriting is not feasible, annotating the item with \texttt{\#[verifier::external\_body]} tells the verifier to ignore it. The absence of these features does not stem from any inherent limitations within Verus. Rather, these features have yet to be implemented as Verus is currently under development.  
+
+\subsubsection{std is special}
+To the Rust compiler, std is a special crate. It contains std-only language features, compiler intrinsics and other unstable library features that Verus is unlikely to ever support. The oddness of std necessitates code rewriting. Normalizing std would be beneficial for integrating formal verification into the development and building process of std.     
+
+\begin{lstlisting}[language=Rust,style=colouredRust, caption={a simplified example of the safety condition of an unsafe public function in std}, label = {1}]
+     /// Returns a reference to an element or subslice, without doing bounds checking.
+    /// For a safe alternative see [`get`].
+    /// # Safety
+    /// Calling this method with an out-of-bounds index is *[undefined behavior]*
+    /// even if the resulting reference is not used.
+    pub unsafe fn get_unchecked<I>(&self, index: usize) -> &I::Output
+    {
+        // Raw pointer read  
+        ...
+    }
+\end{lstlisting}
+
+\begin{lstlisting}[language=Rust,style=colouredRust, caption={a simplified example of converting an unsafe function into a conditionally safe function. We do not need the \texttt{unsafe} keyword in the function signature if the caller is also verified. The \texttt{external\_body} annotation makes the verifier ignore the function body. The safety condition in the comment is also replaced with a precondition. The \texttt{@} operator is a syntactic sugar that returns the abstract representation of the operand.}, label = {2}]
+    #[verifier::external_body]
+    pub fn get_unchecked<I>(&self, index: usize) -> (res: &I::Output)
+    // usize is unsigned integer so implicitly index >= 0
+    requires index < self@.len(),
+    ensures *res == self@[index as _]
+    {
+        // Raw pointer read  
+        ...
+    }
+\end{lstlisting}
+\subsubsection{Unsafe code}
+Verus does not have direct support for unsafe code, although vstd provides useful abstractions for some unsafe code. Unsafe code is unsafe because the correct usage of it needs to satisfy some safety conditions. The general approach to tackling unsafeness is to model its safety conditions as preconditions, semantics as postconditions and convert unsafe code into conditionally safe code. Listing~\ref{1} shows an example of an unsafe function and its safety condition in the comments and listing~\ref{2} is the formally specified version of it.      
+
+\subsubsection{Incomplete External Specifications for std in vstd}
+Modules in std often imports traits, functions and types from other modules. Ideally all modules get verified and expose public specifications for other modules to use. In practice we limit our verification scope to the current module and make assumptions(external specifications) about other modules. 
+
+Vstd provides external specifications for a basic subset of std. For std items not in vstd, we need to come up with our own external specifications. Not all external items can be handled this way. For example, reasoning of types with interior mutability, raw pointer memory access and concurrency require adding some linear ghost state to the function signature.   
+
+\section{Case Studies}
+\subsection{Case Study I: \texttt{raw\_vec}}
+\begin{lstlisting}[language=Rust,style=colouredRust, caption={The formal specification of a valid layout in vstd}, label = {3}]
+/// Matches the conditions here: <https://doc.rust-lang.org/stable/std/alloc/struct.Layout.html>
+pub open spec fn valid_layout(size: usize, align: usize) -> bool {
+    is_power_2(align as int) && size <= isize::MAX as int - (isize::MAX as int % align as int)
+    // This condition is currently missing in vstd but needed for proving pointer arithmics. See <https://github.com/verus-lang/verus/issues/1570>.
+    && size % align == 0 
+}
+\end{lstlisting}
+Our first verification target is the \texttt{raw\_vec} module in the \texttt{alloc} crate. A \texttt{RawVec} is a growable memory buffer, which serves as the basis for other container data structures like \texttt{Vec} and \texttt{VecDeque}. The problem is the logic in \texttt{raw\_vec} is trivially simple and its functionality largely depends on the system memory allocator, which is out of our verification scope. One simple safety property we verify is the absence of numeric overflow/underflow. Another safety property is the validity of type layout(size and alignment), as specified in listing~\ref{3}. 
+
+The developer left notes in the documentation and used defensive programming(assertions and comments) to prevent an overflow/underflow. With ghost code this property is explicitly expressed in the preconditions and machine-checked so comments or defensive programming are no longer needed.    
+\subsection{Case Study II: BinaryHeap}
+Data structures like \texttt{BinaryHeap} are ideal targets for formal verification. It has high level properties and its internal implementation is non-trivial. 
+
+Same as \texttt{raw\_vec}, we begin with proving simple safety properties: absence of numeric overflow and safety conditions in the comments. This step is straightforward and requires little verification expertise. From the perspective of a programmer, Verus extends Rust with a descriptive language for expressing static constraints. Therefore, this layer of verification has the potential to scale to the whole Rust ecosystem. At least library authors can incrementally verify simple properties of their own code with minimum efforts.     
+
+\begin{lstlisting}[language=Rust,style=colouredRust, caption={The specification of the \texttt{push} method of \texttt{BinaryHeap}.}, label = {4}]
+    pub fn push(&mut self, item: T)
+    requires old(self).well_formed()
+    ensures 
+    self.well_formed(),
+    self@.to_multiset() =~= old(self)@.push(item).to_multiset()
+    {...}
+\end{lstlisting}
+Verifying the functional correctness is another level of endeavor. The common steps for verifying any data structures are:
+\begin{enumerate}
+   \item Select an abstract model of the target data structure. For example, \texttt{BinaryHeap<T>} can be represented as \texttt{Seq<T>}(an abstract data type from vstd. Seq is an abstract representation of an array)
+   \item Define a well-formedness specification in terms of the abstract model. For example, in a BinaryHeap, both left and right children are less than or equal to their parent. For all public mutable API like \texttt{pub fn x(\&mut self, ...)}, the precondition and postcondition should both include well-formedness. 
+   \begin{itemize}
+        \item There are usually more than one way to define well-formedness: bottom-up, top-down, iterative, recursive etc. Need to find one that is easy for Verification.
+   \end{itemize}
+   \item Add preconditions and postconditions to methods of the target struct to describe the semantics of the target method. For example, see listing~\ref{4}.  
+   \item Write proofs to establish the logical connection from preconditions to postconditions. The executable code in the function body can be considered as part of the proof. It is also possible to have proofs without executable code: proof functions in Verus. 
+\end{enumerate}
+
+Following these steps, we formally verify the \texttt{push} method of the \texttt{BinaryHeap}. Other methods can also be verified similarly. The proof-to-code ratio is about 1:1~\ref{Line count}:
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|c|c|c|}
+\hline
+\textbf{Spec} & \textbf{Proof} & \textbf{Exec} \\
+\hline
+131 & 199 & 195 \\
+\hline
+131 & 199 & 195 \\
+\hline
+\end{tabular}
+\caption{Line count}
+\label{Line count}
+\end{table}
+% Formal verification of 
+\subsubsection{Handling of Unsafe Code}
+The \texttt{BinaryHeap} in std is based on the \texttt{Vec} data structures, which is external for our verification. The Verus standard library \texttt{vstd} provides external specifications and proofs for \texttt{Vec}. In principle, \texttt{BinaryHeap} can be implemented completely in safe Rust. However, the actual implementation leverages unsafe raw pointer access to avoid unnecessary memory copy operations. In general verifying raw pointer operations requires the application of linear ghost permissions like \texttt{PointsTo}. In the case of \texttt{BinaryHeap}, since all raw pointer code sections are small and well defined, we choose to trust them and model the semantics with assumptions. 
+
+\subsection{Case Study III: Specification-Argumented Function Signature}
+Aside from usual preconditions and postconditions, Verus has additional function signature clauses that specify properties useful for ensuring safety. 
+\subsubsection{Exception Safety}
+When a Rust program encounters an error that cannot be handled, the thread panics and a panic handler is invoked. The panic handler unwinds the execution stack and calls destructors of every object on the stack in order. Ideally, every object on the stack is well-formed and its destructor is ready to run. However, it is possible that when the thread panics an object is in a not-well-formed immediate state(in the middle of a series of unsafe operations) and calling its destructor leads to undefined behavior. Exception safety means the program does not unwind or unwinds safety.     
+
+Verus already prevents common source of unwinding such as division by zero. It also provides a function signature clause \texttt{no\_unwind when \{boolean expression in the input arguments\}} for specifying unwinding conditions. An unwinding condition works similarly to a postcondition and needs to be proved in the function body. To rule out exception safety violations, Verus requires \texttt{no\_unwind} on all destructor methods and forbids unwinding when an invariant is "open".  
+
+\begin{lstlisting}[language=Rust,style=colouredRust, caption={An example of exception safety violation}, label = {5}]
+// CVE-2020-36317: a panic safety bug in String::retain()
+ pub fn retain<F>(&mut self, mut f: F)
+ where F: FnMut(char) -> bool
+ {
+        // A while loop with raw pointer operations and calls the function f
+        // f may panic and leave self in an inconsistent state
+        ...
+ }
+\end{lstlisting}
+
+Currently, std specifies unwinding conditions in doc comments of the function. Table~\ref{tab:assertion_counts} shows the number of those. Rudra\cite{Rudra}, a static analyzer of Rust code, reveals an exception safety violation bug\cite{CVE-2020-36317} in std, as shown in listing~\ref{5}. The \texttt{retain} method takes a function pointer as an argument and calls it in the middle of unsafe operations. The problem is the function signature of \texttt{f} exposes no information about its runtime properties. It may panic, never terminate or overflow the stack. 
+
+While static analysis tools like Rudra can find safety bugs in Rust at the ecosystem scale automatically, we argue that std is a safety-critical and high-value verification target so preventing bugs in the development phase is more desirable than finding bugs after release. 
+
+There are multiple approaches to this problem. The official fix adds guarding code to ensure that \texttt{self} is always well-formed at all program points. The well-formedness of \texttt{self} can be expressed as a type invariant(valid at any program point) or \texttt{LocalInvariant}(valid when not open) in Verus. 
+
+Another solution, restrictive but straightforward, is to prove \texttt{retain} does not unwind by requiring \texttt{f} to be \texttt{no\_unwind}. This only works if the caller is also verified and may be too restrictive for certain use cases that \texttt{f} may unwind. Requiring a function pointer to be \texttt{no\_unwind} is not yet supported by Verus, although there is no inherent limitation that blocks this features.   
+
+\begin{lstlisting}[language=Rust,style=colouredRust, caption={decreases example}, label = {6}]
+    fn fib(n: u32) -> u32 
+        decreases n 
+    {
+        match n {
+            0 => 0,
+            1 => 1,
+            _ => {
+                    let fib_1 = fib(n - 1); 
+                    let fib_2 = fib(n - 2);
+                    // Add this to prevent overflow
+                    if fib_1 as u64 + fib_2 as u64 > u32::MAX as u64 {
+                        return u32::MAX
+                    }
+                    let res = fib_1 + fib_2;
+                    res
+                },
+        }
+    }
+\end{lstlisting}
+
+\begin{lstlisting}[language=Rust,style=colouredRust, caption={Linear Ghost Type for Tracking Complexity}, label = {7}]
+tracked struct Gas(nat);
+impl Gas {
+    #[verifier::external_body]
+    proof fn new(num: nat) -> (tracked res: Self) 
+        ensures res.0 == num
+    {
+        unimplemented!()
+    }
+
+    #[verifier::external_body]
+    proof fn consume_loop(tracked &mut self)
+        requires old(self).0 > 0,
+            ensures old(self).0 == self.0 + 1
+    {}
+
+    #[verifier::external_body]
+    proof fn consume_func(tracked &mut self)
+        requires old(self).0 > 0,
+            ensures old(self).0 == self.0 + 1
+    {}
+}
+
+fn sum(i: usize, Tracked(gas): Tracked<&mut Gas>) 
+    requires 
+        old(gas).0 > i + 1,
+        ensures old(gas).0 == gas.0 + i + 1
+        {
+            proof {
+                gas.consume_func();
+            }
+            let mut j = 0;
+            while j < i 
+            invariant gas.0 + 1 + j == old(gas).0,
+            old(gas).0 > i + 1,
+            j <= i
+            {
+                
+                proof {
+                    gas.consume_loop();
+                }
+                j += 1;
+            }
+}
+\end{lstlisting}
+
+\subsubsection{User-defined Linear Ghost State in the Signature}
+Even if we know that a function does not unwind, we have no idea whether it returns or overflows the stack, which may violate safety properties, especially when the execution environment is not isolated, for example, in the Linux kernel space or on bare metal.
+
+In general, proving termination of arbitrary program automatically, i.e., the halting problem is undecidable. However, if for every loop and recursive function a ranking function is provided, we can prove termination. Verus already has a clause \texttt{decreases} for specifying ranking function, as shown in listing~\ref{6}. However, it is not flexible enough. 
+
+We demonstrate how linear ghost types can be leveraged to argument the function signature in listing~\ref{7}. The Verus keyword \texttt{tracked} marks the struct as a ghost type that is tracked by the borrow checker. In the function body we establish the relationship between gas consumption and input \texttt{i}. The precondition now specifies the complexity of the computation inside the function body. The caller not only knows that the function terminates but also has an idea of how running time grows with input. The \texttt{Gas} token serves as an abstract capability of CPU time if it is opaque to the user and we can force all loops and function call to consume gas.     
+
+Similarly we can define linear ghost types for tracking max stack length. If we know the max size of a stack frame and the stack size, we can calculate the max stack depth. 
+Vstd defines a linear ghost type \texttt{PointsTo} that keeps track of the abstract metadata of a raw pointer including provenance, layout and memory content and expose a safe API for reading and writing using raw pointers.
+All ghost code are erased after compilation so ghost types have no runtime representation or cost.
+% \subsubsubsection{Ensuring Stack Safety by Limiting Max Call Depth}
+
+% \subsubsubsection{Ensuring Termination by Limiting Number of Loop Iterations and Recursions}
+
+
+% \subsection{Verification Developer Experience}
+
+
+\section{Evaluation}
+Our primary metrics for success include the thoroughness of verified invariants, the overall annotation effort, and the degree to which concurrency properties (if explored) can be guaranteed. For correctness coverage, we will focus on essential methods in \texttt{Vec} and \texttt{BTreeMap}—for example, \texttt{insert}, \texttt{remove}, and node-splitting operations. The notation effort will be gauged by measuring the ratio of proof-related lines to functional code. If we do explore concurrency proofs, we will track how well our specifications hold under concurrent usage and whether any simplified concurrency wrappers can demonstrate Verus’s capabilities.
+
+\subsection{Mid-Point Evaluation}
+By Week 11 of the 16-week semester, we intend to have at least the core operations of \texttt{Vec} or basic insertion in \texttt{BTreeMap} fully annotated and passing Verus checks, indicating that our approach is technically viable. This midpoint assessment will also help us identify any major solver performance bottlenecks and refine our specification strategies before tackling more sophisticated operations or concurrency.
+
+\subsection{Final Evaluation}
+For the final submission, we plan to present a set of verified operations in \texttt{BTreeMap}, along with any additional results for \texttt{Vec}, time permitting. We will document any attempts to model concurrency, discuss successes or obstacles, and provide a qualitative comparison to other formal verification efforts in Rust. We also intend to analyze whether the annotation overhead is reasonable given the complexity of the operations verified and to highlight any invariants or proof techniques that proved especially valuable for ensuring correctness.
+
+
+\section{Plan of Work}
+\noindent\textbf{Weeks 1--8 (Completed):}
+\begin{itemize}
+\item Verus was installed and tested with small Rust examples.
+\end{itemize}
+
+\noindent\textbf{Week 9--10:}
+\begin{itemize}
+\item Model the allocator APIs with axioms
+\item Resolve any immediate solver errors and refine the approach as needed.
+\item Begin documentation for the final paper.
+\end{itemize}
+
+\noindent\textbf{Week 11--12:}
+\begin{itemize}
+\item Verify the verification of \texttt{insert}, \texttt{remove} and relevant invariants.
+\item Investigate concurrency (if feasible); draft concurrency-related specifications.
+\item Track proof overhead and solver performance.
+\end{itemize}
+
+\noindent\textbf{Week 13:}
+\begin{itemize}
+\item Evaluate proof coverage; identify gaps for the final push.
+\item Draft of major sections of the final paper (methodology, results, limitations).
+\end{itemize}
+
+\noindent\textbf{Week 14--15:}
+\begin{itemize}
+\item Finalize verification of chosen operations and concurrency aspects (if any).
+\item Integrate feedback from peers/instructor.
+\item Complete and polish workshop-style paper.
+\end{itemize}
+
+\noindent\textbf{Week 16:}
+\begin{itemize}
+\item Finalize code artifacts.
+\item Prepare and deliver a class presentation.
+\end{itemize}
+
+\subsection{Goals}
+\noindent\textbf{Minimum Goal:} Prove core \texttt{Vec} operations (push/pop) for basic functional correctness under single-threaded usage.\\
+\textbf{Expected Goal:} Verify a set of \texttt{BTreeMap} operations (insert/remove) with relevant invariants and partial concurrency checks if time allows.\\
+\textbf{Reach Goal:} Thoroughly verify \texttt{BTreeMap} across a broader range of operations, including concurrency invariants.
+
+\section{Who Did What}
+\begin{itemize}
+\item \textbf{Kosumi Chan:} Investigated the background on concurrent separation logic, refined approach to \texttt{BTreeMap} specifications, and authored the concurrency threat model.
+\item \textbf{Hu Guo:} Explored Verus' use of Rust's affine-type system, implemented initial verification of \texttt{Vec} operations, and drafted a pivot strategy for \texttt{BTreeMap}.
+\end{itemize}
+
+\section{Discussion}
+\subsection{std-like crates}
+Although formal verification requires verification expertise and significant manual effort, it does not have to be scalable to the whole ecosystem to be useful. 
+
+Rust std is maintained by Rust experts and well funded so it is possible to integrate formal verification into development.
+There are other std-like crates like Rust for Linux kernel crate and Rex\cite{rax} kernel crate that are suitable for formal verification.  
+\subsection{Language-based Safety}
+Even without verification, the Rust compiler can prove memory safety of safe Rust code. Isolation of subsystems based on Rust language safety guarantees\cite{Theusus,Redleaf,TockOS,rax} is an ongoing research topic. 
+
+\subsubsection{Challenges in ensuring the safety of adversarial safe Rust code}
+Existing work on isolation with Rust follows a non-adversarial model because the safety of Rust does not account for transient execution attacks and the compiler toolchain contains unsound bugs.   
+
+\subsection{Verification-based Safety}
+It is an open research question that how formal verification can strengthen the safety guarantees of Rust. 
+Ideally we will have a formally verified Rust compiler like CompCertC so that compiler bugs are eliminated.  
+
+We may also require untrusted code to carry proofs of its safety. Verus has a no-cheating mode that forbids assumptions. 
+Proof-carrying code may be able to squeeze more performance and flexibility out of the isolation mechanism ,and minimize extralingual runtime required for safety. 
+
+% \section{References}
+\printbibliography
+\end{document}
