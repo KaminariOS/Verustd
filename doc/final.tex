@@ -123,7 +123,7 @@ Rust employs an ownership model enforced by an affine type system, meaning each 
 When the ownership policy upholds, Rust ensures spatial and temporal memory safety. For operations that may break the ownership policy but cannot be checked by the compiler, the programmer has to use the \texttt{unsafe} keyword to mark such code block and take on the responsibility to ensure that the unsafe code does not violate Rust's safety invariants(unsound). Otherwise unsound code may cause undefined behaviors(UB).
 
 \subsubsection{The Rust Standard Library}
-Rust’s standard library is built in layers, each designed for different environments and capabilities:
+Rust's standard library provides essential foundational features and abstractions required for building Rust applications across different environments. It is structured hierarchically into several layers, each designed for different environments and capabilities:
 \begin{itemize}
         \item \textbf{core} The \texttt{core} crate is the foundation of Rust. It contains the minimal set of language features and traits that work in any environment—even on bare metal without an operating system.
         \item \textbf{alloc} The \texttt{alloc} crate builds on core by adding dynamic memory allocation support. It provides heap-based data structures such as \texttt{Box}, \texttt{Vec}, \texttt{String}, and reference-counted pointers (\texttt{Rc}/\texttt{Arc}).
