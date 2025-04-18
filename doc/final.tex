@@ -118,7 +118,7 @@ Formal verification of Rust code is an active research area. However, the majori
 
 \subsection{Rust}
 \subsubsection{Ownership policy}
-Rust's ownership policy, enforced by its affine type system requires that a memory object must be exclusively owned by a variable at a time. A memory object can be borrowed as references from the owner temporarily. There can be at most one outstanding mutable references or multiple immutable references at a time. The ownership policy is checked by the borrow checker in rustc at compile time.
+Rust employs an ownership model enforced by an affine type system, meaning each memory resource must be exclusively owned by exactly one variable at a given time. Ownership can be temporarily transferred or shared through references ("borrowing"), subject to strict rules: at any moment, Rust allows at most one mutable reference or multiple immutable references. The ownership policy is checked by the borrow checker in rustc at compile time.
 
 When the ownership policy upholds, Rust ensures spatial and temporal memory safety. For operations that may break the ownership policy but cannot be checked by the compiler, the programmer has to use the \texttt{unsafe} keyword to mark such code block and take on the responsibility to ensure that the unsafe code does not violate Rust's safety invariants(unsound). Otherwise unsound code may cause undefined behaviors(UB).
 
