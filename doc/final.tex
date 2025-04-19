@@ -80,9 +80,9 @@ Rust\cite{matsakis2014rust} is a modern programming language with an affine type
 
 Some common idioms include:
 \begin{enumerate}
-    \item \textbf{Minimize and Isolate:} Keep \texttt{unsafe} blocks small and confined to modules or functions that perform low-level operations. 
-    \item \textbf{Encapsulate Unsafe in Safe Abstractions:} Hide \texttt{unsafe} code behind a public, safe API. 
-    \item \textbf{Document Invariants and Assumptions:} Clearly state the assumptions(such as pointer validity or aliasing rules). 
+    \item \textbf{Minimize and Isolate}: Keep \texttt{unsafe} blocks small and confined to modules or functions that perform low-level operations. 
+    \item \textbf{Encapsulate Unsafe in Safe Abstractions}: Hide \texttt{unsafe} code behind a public, safe API. 
+    \item \textbf{Document Invariants and Assumptions}: Clearly state the assumptions(such as pointer validity or aliasing rules). 
 \end{enumerate}
 
 
@@ -223,7 +223,7 @@ Modules in std often imports traits, functions and types from other modules. Ide
 
 Vstd provides external specifications for a basic subset of std. For std items not in vstd, we need to come up with our own external specifications. Not all external items can be handled this way. For example, reasoning of types with interior mutability, raw pointer memory access and concurrency require adding some linear ghost state to the function signature.   
 
-\section{Case Studies}
+\section{Evaluation}
 \subsection{Case Study I: \texttt{raw\_vec}}
 \begin{lstlisting}[language=Rust,style=colouredRust, caption={The formal specification of a valid layout in vstd}, label = {3}]
 /// Matches the conditions here: <https://doc.rust-lang.org/stable/std/alloc/struct.Layout.html>
@@ -416,10 +416,6 @@ All ghost code are erased after compilation so ghost types have no runtime repre
 
 % \subsection{Verification Developer Experience}
 
-
-\section{Evaluation}
-Our primary metrics for success include the thoroughness of verified invariants, the overall annotation effort, and the degree to which concurrency properties (if explored) can be guaranteed. For correctness coverage, we will focus on essential methods in \texttt{Vec} and \texttt{BinaryHeap}—for example, \texttt{push}, \texttt{pop}, and heap-order maintenance operations.. The notation effort will be gauged by measuring the ratio of proof-related lines to functional code. If we do explore concurrency proofs, we will track how well our specifications hold under concurrent usage and whether any simplified concurrency wrappers can demonstrate Verus’s capabilities.
-
 \section{Discussion}
 \subsection{std-like crates}
 Although formal verification requires verification expertise and significant manual effort, it does not have to be scalable to the whole ecosystem to be useful. Code base that are safety-critical, complex and error-prone should be prioritized for verification. 
@@ -438,7 +434,7 @@ Ideally we will have a formally verified Rust compiler like CompCertC so that co
 
 We may also require untrusted code to carry proofs of its safety. Verus has a no-cheating mode that forbids assumptions. With no-cheating mode enabled, untrusted code must provide a proof of its safety to pass verification. Proof-carrying code may be able to squeeze more performance and flexibility out of existing isolation mechanisms, and minimize extralingual runtime required for safety. 
 
-Sometimes the safety of a system depends on a hidden state machine. The code must follow some kind of protocol to be safe. For example, some functions need to be invoked in a specific order, or some MMIO register of a device must be accessed following the specification in the datasheet, or after modifying page table entries the TLB cache needs to be flushed. Out of 240 CVEs of device drivers in the Linux kernel, 72 are due to protocol violation\cite{RFL_security}. Typestate pattern and session types\cite{sessiontype} are proposed for encoding such protocols at zero runtime overhead. The ghost state of Verus is a more general and straightforward approach to keeping track of abstract metadata of the system.       
+Sometimes the safety of a system depends on a hidden state machine. The code must follow some kind of protocol to be safe. For example, some functions need to be invoked in a specific order, or some MMIO registers of a device must be accessed following the specification in the datasheet, or after modifying page table entries the TLB cache needs to be flushed. Out of 240 CVEs of device drivers in the Linux kernel, 72 are due to protocol violation\cite{RFL_security}. Typestate pattern and session types\cite{sessiontype} are proposed for encoding such protocols at zero runtime overhead. The ghost state of Verus is a more general and straightforward approach to keeping track of abstract metadata of the system.       
 
 \section{Conclusion}
 % \section{References}
