@@ -7,6 +7,7 @@ use vstd::simple_pptr::PPtr;
 use vstd::layout::is_power_2;
 use vstd::layout::layout_for_type_is_valid;
 use vstd::set_lib;
+use vstd::arithmetic::div_mod::*;
 verus!{
 
 struct MyStruct {
@@ -100,5 +101,11 @@ fn ptr_play<V>(val: V)  requires core::mem::size_of::<V>() != 0, core::mem::size
     }
 }
 
+    proof fn address(addr: usize, size: usize, alignment: usize) 
+    requires size % alignment == 0, addr % alignment == 0, addr < 1000000, size < 1000000
+    ensures (addr + size ) % (alignment as int) == 0
+    {
+        assert ((addr + size ) % (alignment as int) == 0) by (nonlinear_arith);    
+    }
 }
 

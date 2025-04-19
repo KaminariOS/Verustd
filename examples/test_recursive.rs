@@ -210,6 +210,7 @@ fn binary_search(v: &Vec<u64>, k: u64, Tracked(gas): Tracked<&mut Gas>) -> (r: u
     }
     i1
 }
+
 // fn recursive(x: usize)
 //     decreases x {
 //         recursive_1(x);
