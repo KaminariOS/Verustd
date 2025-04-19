@@ -167,7 +167,7 @@ Vstd is the "standard library" for Verus. It consists of commonly used specifica
 We assume that while an adversary is restricted to writing safe code, they can invoke any safe public standard functions with arbitrary arguments. Although Rust's borrow checker already prevents many common memory safety errors (such as data races and use-after-free), it does not guarantee functional correctness or invariants related to data structure behavior. Consequently, our verification targets a class of attacks in which incorrect library logic might be leveraged to corrupt data or cause unexpected behavior.
 
 \begin{itemize}
-\item \textbf{Data-Structure Invariant Violations:} An adversary may trigger key ordering violations or disrupt node relationships in a \texttt{BTreeMap} (e.g., by exploiting an unverified insertion routine that leads to a broken internal structure). If such structural invariants are not formally proven, an attacker could cause lookups or iterations to fail unexpectedly.
+\item \textbf{Data-Structure Invariant Violations:} An adversary may trigger key ordering violations or disrupt node relationships in a \texttt{BinaryHeap} (e.g., by exploiting an unverified insertion routine that leads to a broken internal structure). If such structural invariants are not formally proven, an attacker could cause lookups or iterations to fail unexpectedly.
 \item \textbf{Potential Concurrency Bugs:} If we pursue partial concurrency verification, adversaries might exploit incomplete synchronization mechanisms or overlooked atomic guarantees. Race conditions could violate internal invariants, allowing inconsistent reads or writes that undermine correctness or even create denial-of-service conditions.
 \end{itemize}
 
