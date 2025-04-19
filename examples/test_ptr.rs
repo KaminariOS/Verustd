@@ -101,11 +101,25 @@ fn ptr_play<V>(val: V)  requires core::mem::size_of::<V>() != 0, core::mem::size
     }
 }
 
-    proof fn address(addr: usize, size: usize, alignment: usize) 
-    requires size % alignment == 0, addr % alignment == 0, addr < 1000000, size < 1000000
-    ensures (addr + size ) % (alignment as int) == 0
+    // proof fn address(addr: usize, size: usize, alignment: usize) 
+    // requires alignment > 0, size % alignment == 0, addr % alignment == 0, addr < 1000000, size < 1000000, 
+    // ensures (addr + size ) % (alignment as int) == 0
+    // {
+    //     broadcast use vstd::arithmetic::div_mod::lemma_mod_adds;
+    //     assert ((addr + size ) % (alignment as int) == 0) by (nonlinear_arith);    
+    // }
+
+
+    proof fn address(addr: usize, size: usize, alignment: usize)
+        requires
+            alignment > 0,
+            size % alignment == 0,
+            addr % alignment == 0,
+        ensures
+            (addr + size) % (alignment as int) == 0,
     {
-        assert ((addr + size ) % (alignment as int) == 0) by (nonlinear_arith);    
+        broadcast use vstd::arithmetic::div_mod::lemma_mod_adds;
+        // vstd::arithmetic::div_mod::lemma_mod_adds(addr as int, size as int, alignment as int);
     }
 }
 
