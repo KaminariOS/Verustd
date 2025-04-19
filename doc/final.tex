@@ -418,7 +418,7 @@ All ghost code are erased after compilation so ghost types have no runtime repre
 
 
 \section{Evaluation}
-Our primary metrics for success include the thoroughness of verified invariants, the overall annotation effort, and the degree to which concurrency properties (if explored) can be guaranteed. For correctness coverage, we will focus on essential methods in \texttt{Vec} and \texttt{BTreeMap}—for example, \texttt{insert}, \texttt{remove}, and node-splitting operations. The notation effort will be gauged by measuring the ratio of proof-related lines to functional code. If we do explore concurrency proofs, we will track how well our specifications hold under concurrent usage and whether any simplified concurrency wrappers can demonstrate Verus’s capabilities.
+Our primary metrics for success include the thoroughness of verified invariants, the overall annotation effort, and the degree to which concurrency properties (if explored) can be guaranteed. For correctness coverage, we will focus on essential methods in \texttt{Vec} and \texttt{BinaryHeap}—for example, \texttt{push}, \texttt{pop}, and heap-order maintenance operations.. The notation effort will be gauged by measuring the ratio of proof-related lines to functional code. If we do explore concurrency proofs, we will track how well our specifications hold under concurrent usage and whether any simplified concurrency wrappers can demonstrate Verus’s capabilities.
 
 \section{Discussion}
 \subsection{std-like crates}
