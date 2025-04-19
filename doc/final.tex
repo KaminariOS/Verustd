@@ -191,7 +191,7 @@ Verus supports a large subset of Rust language features. However, some commonly 
 \subsubsection{std is special}
 To the Rust compiler, std is a special crate. It contains std-only language features, compiler intrinsics and other unstable library features that Verus is unlikely to ever support. The oddness of std necessitates code rewriting. Normalizing std would be beneficial for integrating formal verification into the development and building process of std.     
 
-\begin{lstlisting}[language=Rust,style=colouredRust, caption={a simplified example of the safety condition of an unsafe public function in std}, label = {1}]
+\begin{lstlisting}[float,language=Rust,style=colouredRust, caption={a simplified example of the safety condition of an unsafe public function in std}, label = {1}]
      /// Returns a reference to an element or subslice, without doing bounds checking.
     /// For a safe alternative see [`get`].
     /// # Safety
@@ -204,7 +204,7 @@ To the Rust compiler, std is a special crate. It contains std-only language feat
     }
 \end{lstlisting}
 
-\begin{lstlisting}[language=Rust,style=colouredRust, caption={a simplified example of converting an unsafe function into a conditionally safe function. We do not need the \texttt{unsafe} keyword in the function signature if the caller is also verified. The \texttt{external\_body} annotation makes the verifier ignore the function body. The safety condition in the comment is also replaced with a precondition. The \texttt{@} operator is a syntactic sugar that returns the abstract representation of the operand.}, label = {2}]
+\begin{lstlisting}[float,language=Rust,style=colouredRust, caption={a simplified example of converting an unsafe function into a conditionally safe function. We do not need the \texttt{unsafe} keyword in the function signature if the caller is also verified. The \texttt{external\_body} annotation makes the verifier ignore the function body. The safety condition in the comment is also replaced with a precondition. The \texttt{@} operator is a syntactic sugar that returns the abstract representation of the operand.}, label = {2}]
     #[verifier::external_body]
     pub fn get_unchecked<I>(&self, index: usize) -> (res: &I::Output)
     // usize is unsigned integer so implicitly index >= 0
@@ -241,7 +241,7 @@ Data structures like \texttt{BinaryHeap} are ideal targets for formal verificati
 
 Same as \texttt{raw\_vec}, we begin with proving simple safety properties: absence of numeric overflow and safety conditions in the comments. This step is straightforward and requires little verification expertise. From the perspective of a programmer, Verus extends Rust with a descriptive language for expressing static constraints. Therefore, this layer of verification has the potential to scale to the whole Rust ecosystem. At least library authors can incrementally verify simple properties of their own code with minimum efforts.     
 
-\begin{lstlisting}[language=Rust,style=colouredRust, caption={The specification of the \texttt{push} method of \texttt{BinaryHeap}.}, label = {4}]
+\begin{lstlisting}[float,language=Rust,style=colouredRust, caption={The specification of the \texttt{push} method of \texttt{BinaryHeap}.}, label = {4}]
     pub fn push(&mut self, item: T)
     requires old(self).well_formed()
     ensures 
@@ -406,8 +406,69 @@ The Sel4\cite{sel4} microkernel guarantees the impossibility of kernel stack ove
 
 In Sel4, the translation from executable code to proof is manual but in Verus it is automatic. Verus simulates the execution with an abstract machine that contains more abstract metadata(ghost state) than the actual machine does. The verified source code contains more information thanks to the added specifications and proofs. Therefore, it is possible to enhance static analysis with ghost states. For example, static analysis can calculate the upper bound of the call stack size automatically if the range of input size, the related ranking function are formally specified for every recursive function.    
 
-Vstd defines a linear ghost type \texttt{PointsTo} that keeps track of the abstract metadata of a raw pointer including provenance, layout and memory content and exposes a safe API for reading and writing using raw pointers.
+\begin{lstlisting}[float,language=Rust,style=colouredRust, caption={Proving pointer addition preserves alignment with modulo arithmetics}, label = {8}]
+proof fn address_add_align(addr: usize, size: usize, alignment: usize)
+    requires
+        alignment > 0,
+        size % alignment == 0,
+        addr % alignment == 0,
+    ensures
+        (addr + size) % (alignment as int) == 0,
+{
+    broadcast use lemma_mod_adds;
+}
+\end{lstlisting}
 
+Vstd defines a linear ghost type \texttt{PointsTo} that keeps track of the abstract metadata of a raw pointer including provenance, layout and memory content and exposes a safe API for reading and writing using raw pointers. We craft a pedagogical example in Listing~\ref{8} and Listing~\ref{9}.
+
+\begin{lstlisting}[language=Rust,style=colouredRust, caption={a pedagogical example showcasing how ghost memory permission converts unsafe raw pointer operation to safe code}, label = {9}]
+
+fn write_to_raw_array<V>(first: V, second: V)  requires 
+                    core::mem::size_of::<V>() != 0, 
+                    size_limit_for_valid_layout::<V>(2)
+{
+    // This is an assumption that means 
+    // we trust the Rust compiler for the layout of type V to be valid
+    layout_for_type_is_valid::<V>();
+
+    let size = core::mem::size_of::<V>();
+    let align = core::mem::align_of::<V>();
+
+    // p is the actual pointer returned by the allocator while points_to_raw and dealloc are ghost.
+    // points_to_raw represents the permission to access the memory region pointed to by p 
+    // It contains abstract metadata about the allocation such as provenance, size, alignment and memory value
+    let (p, Tracked(points_to_raw), Tracked(dealloc)) = allocate(
+                2 * size,
+                align,
+            );
+
+    assume(p as usize + size <= usize::MAX);
+
+    let tracked mut pointsToFirst;
+    let tracked mut pointsToSecond;
+    proof {
+        // This should be included in the post condition of layout_for_type_is_valid
+        assume(size % align == 0);
+        let item_range = set_lib::set_int_range( p as int + size,
+            p as int + 2 * size,
+        );
+        // We can split and merge memory permissions 
+        let tracked (a, b) = points_to_raw.split(item_range);
+        pointsToFirst = b;
+        pointsToSecond = a;
+
+        address_add_align(p as usize, size, align);
+    }
+    let tracked mut pointsToFirst = pointsToFirst.into_typed::<V>((p as usize) as usize);
+    // Now ptr write is conditionally safe
+    ptr_mut_write(p as *mut V, Tracked(&mut pointsToFirst), first);
+    // Provenance is the abstract ID of a specific allocation
+    let provenance = expose_provenance(p);
+    let new_p: *mut V = with_exposed_provenance(p as usize + size, provenance);
+    let tracked mut pointsToSecond = pointsToSecond.into_typed::<V>((new_p as usize) as usize);
+    ptr_mut_write(new_p , Tracked(&mut pointsToSecond), second);
+}
+\end{lstlisting}
 All ghost code are erased after compilation so ghost types have no runtime representation or cost.
 % \subsubsubsection{Ensuring Stack Safety by Limiting Max Call Depth}
 
@@ -437,6 +498,7 @@ We may also require untrusted code to carry proofs of its safety. Verus has a no
 Sometimes the safety of a system depends on a hidden state machine. The code must follow some kind of protocol to be safe. For example, some functions need to be invoked in a specific order, or some MMIO registers of a device must be accessed following the specification in the datasheet, or after modifying page table entries the TLB cache needs to be flushed. Out of 240 CVEs of device drivers in the Linux kernel, 72 are due to protocol violation\cite{RFL_security}. Typestate pattern and session types\cite{sessiontype} are proposed for encoding such protocols at zero runtime overhead. The ghost state of Verus is a more general and straightforward approach to keeping track of abstract metadata of the system.       
 
 \section{Conclusion}
+
 % \section{References}
 \printbibliography
 \end{document}
