@@ -22,6 +22,12 @@ For the main crate
 verus src/main.rs --extern=verified_lib -L target/debug/deps --import verified_lib=../verified_lib/vl.vir
 ```
 
+## Proof artifacts
+- [RawVec](./src/alloc/src/raw_vec.rs)
+- [BinaryHeap](./src/alloc/src/collections/binary_heap/mod.rs)
+- [Gas](./examples/test_recursive.rs)
+- [PointsTo](./examples/test_ptr.rs)
+
 ## Limitations of Verus
 - Mutable reference(`&mut T`) as return value or struct field not supported 
 - `&mut data[i]` not supported
