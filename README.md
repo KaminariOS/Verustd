@@ -1,5 +1,8 @@
 # Verustd: Verifying Rust Standard Library
 
+## Installing Verus 
+[Link](https://github.com/verus-lang/verus/blob/main/INSTALL.md)
+
 ## Running Verification
 
 To run verification, invoke Verus with the crate-type library on the `src/lib.rs` file:
