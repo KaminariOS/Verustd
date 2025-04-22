@@ -1139,8 +1139,8 @@ impl<'a, T: 'a> Hole<'a, T> {
         self.pos = index;
     }
     
-    // It is possible to enforce the call of this function by passing in and getting out a Tracked
-// token 
+    // This is not exception safe but once mutable reference is support we can just use the drop
+    // method
     #[verifier::external_body]
     fn pre_drop(&mut self, v: &mut Vec<T>) 
     ensures v == old(v)
