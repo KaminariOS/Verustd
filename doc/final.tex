@@ -501,7 +501,7 @@ Sometimes, the safety of a system depends on a hidden-state machine. The code mu
 \section{Conclusion}
 In this paper, we have presented an incremental deductive verification approach to formally demonstrate the functional correctness of key components of the Rust standard library using the Verus verification framework. Starting from the informal documentation of each module, we systematically derived preconditions, postconditions, loop invariants, and ghost state annotations to bridge the gap between safe Rust type-level guarantees and the deeper semantic properties required for high‐assurance systems.
 
-Our case studies shows that, while initial annotation and proof development requires expertise, Verus scales to nontrivial data‐structure implementations with manageable annotation overhead. By eliminating informal comments and runtime assertions in favor of machine‐checked contracts, we gain stronger confidence in library invariants and expose previously undocumented safety conditions to both implementers and clients.
+Our case studies show that, while initial annotation and proof development requires expertise, Verus scales to non-trivial data structure implementations with manageable annotation overhead. By eliminating informal comments and runtime assertions in favor of machine‐checked contracts, we gain stronger confidence in library invariants and expose previously undocumented safety conditions to both implementers and clients.
 
 
 By establishing a clear methodology and demonstrating its effectiveness on core Rust std data structures, this work lays the foundation for high‐assurance Rust libraries that harden the language’s performance and safety with the rigor of formal verification.
