@@ -221,7 +221,7 @@ Verus does not have direct support for unsafe code, although vstd provides usefu
 \subsubsection{Incomplete External Specifications for std in vstd}
 Modules in std often import traits, functions, and types from other modules. Ideally, all modules get verified and expose public specifications for other modules to use. In practice, we limit our verification scope to the current module and make assumptions(external specifications) about other modules. 
 
-Vstd provides external specifications for a basic subset of std. For std items not in vstd, we need to come up with our own external specifications. Not all external items can be handled this way. For example, reasoning of types with interior mutability, raw pointer memory access and concurrency require adding some linear ghost state to the function signature.   
+Vstd provides external specifications for a basic subset of std. For items not in std, we need to come up with our own external specifications. Not all external items can be handled this way. For example, reasoning of types with interior mutability, raw pointer memory access, and concurrency require adding some linear ghost state to the function signature.  
 
 \section{Evaluation}
 \subsection{Case Study I: \texttt{raw\_vec}}
