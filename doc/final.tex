@@ -235,9 +235,10 @@ pub open spec fn valid_layout(size: usize, align: usize) -> bool {
 \end{lstlisting}
 Our first verification target is the \texttt{raw\_vec} module in the \texttt{alloc} crate. A \texttt{RawVec} is a growable memory buffer, which serves as the basis for other container data structures like \texttt{Vec} and \texttt{VecDeque}. The problem is the logic in \texttt{raw\_vec} is trivially simple and its functionality largely depends on the system memory allocator, which is out of our verification scope. One simple safety property that we verify is the absence of numeric overflow/underflow. Another safety property is the validity of the type layout (size and alignment), as specified in the listing~\ref{3}. 
 
-The developer left notes in the documentation and used defensive programming(assertions and comments) to prevent an overflow/underflow. With ghost code this property is explicitly expressed in the preconditions and machine-checked so comments or defensive programming are no longer needed.    
+The developer left notes in the documentation and used defensive programming(assertions and comments) to prevent an overflow/underflow. With ghost code, this property is explicitly expressed in the preconditions and machine-checked, so comments or defensive programming are no longer needed. 
+
 \subsection{Case Study II: BinaryHeap}
-Data structures like \texttt{BinaryHeap} are ideal targets for formal verification. It has high level properties and its internal implementation is non-trivial. 
+Data structures like \texttt{BinaryHeap} are ideal targets for formal verification. It has high-level properties and its internal implementation is non-trivial. 
 
 Same as \texttt{raw\_vec}, we begin with proving simple safety properties: absence of numeric overflow and safety conditions in the comments. This step is straightforward and requires little verification expertise. From the perspective of a programmer, Verus extends Rust with a descriptive language for expressing static constraints. Therefore, this layer of verification has the potential to scale to the whole Rust ecosystem. At least library authors can incrementally verify simple properties of their own code with minimum efforts.     
 
