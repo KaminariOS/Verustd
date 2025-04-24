@@ -470,7 +470,7 @@ fn write_to_raw_array<V>(first: V, second: V)  requires
     ptr_mut_write(new_p , Tracked(&mut pointsToSecond), second);
 }
 \end{lstlisting}
-All ghost code are erased after compilation so ghost types have no runtime representation or cost.
+All ghost codes are erased after compilation, so ghost types have no run-time representation or cost.
 % \subsubsubsection{Ensuring Stack Safety by Limiting Max Call Depth}
 
 % \subsubsubsection{Ensuring Termination by Limiting Number of Loop Iterations and Recursions}
