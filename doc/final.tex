@@ -216,7 +216,7 @@ To the Rust compiler, std is a special crate. It contains std-only language feat
     }
 \end{lstlisting}
 \subsubsection{Unsafe code}
-Verus does not have direct support for unsafe code, although vstd provides useful abstractions for some unsafe code. Unsafe code is unsafe because the correct usage of it needs to satisfy some unchecked safety conditions. The general approach to tackling unsafeness is to model its safety conditions as preconditions, semantics as postconditions and convert unsafe code into conditionally safe code. Listing~\ref{1} shows an example of an unsafe function and its safety condition in the comments and listing~\ref{2} is the formally specified version of it.      
+Verus does not have direct support for unsafe code, although vstd provides useful abstractions for some unsafe code. Unsafe code is unsafe because the correct usage of it needs to satisfy some unchecked safety conditions. The general approach to tackling unsafeness is to model its safety conditions as preconditions, semantics as postconditions and convert unsafe code into conditionally safe code. The list~\ref{1} shows an example of an unsafe function, and its safety condition in the comments, and the list~\ref{2} is the formally specified version of it.   
 
 \subsubsection{Incomplete External Specifications for std in vstd}
 Modules in std often imports traits, functions and types from other modules. Ideally all modules get verified and expose public specifications for other modules to use. In practice we limit our verification scope to the current module and make assumptions(external specifications) about other modules. 
