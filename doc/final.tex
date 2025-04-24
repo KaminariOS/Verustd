@@ -233,7 +233,7 @@ pub open spec fn valid_layout(size: usize, align: usize) -> bool {
     && size % align == 0 
 }
 \end{lstlisting}
-Our first verification target is the \texttt{raw\_vec} module in the \texttt{alloc} crate. A \texttt{RawVec} is a growable memory buffer, which serves as the basis for other container data structures like \texttt{Vec} and \texttt{VecDeque}. The problem is the logic in \texttt{raw\_vec} is trivially simple and its functionality largely depends on the system memory allocator, which is out of our verification scope. One simple safety property we verify is the absence of numeric overflow/underflow. Another safety property is the validity of type layout(size and alignment), as specified in listing~\ref{3}. 
+Our first verification target is the \texttt{raw\_vec} module in the \texttt{alloc} crate. A \texttt{RawVec} is a growable memory buffer, which serves as the basis for other container data structures like \texttt{Vec} and \texttt{VecDeque}. The problem is the logic in \texttt{raw\_vec} is trivially simple and its functionality largely depends on the system memory allocator, which is out of our verification scope. One simple safety property that we verify is the absence of numeric overflow/underflow. Another safety property is the validity of the type layout (size and alignment), as specified in the listing~\ref{3}. 
 
 The developer left notes in the documentation and used defensive programming(assertions and comments) to prevent an overflow/underflow. With ghost code this property is explicitly expressed in the preconditions and machine-checked so comments or defensive programming are no longer needed.    
 \subsection{Case Study II: BinaryHeap}
