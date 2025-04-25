@@ -108,7 +108,7 @@ We make the following contributions:
 \section{State of the Art for Verifying Rust Program}
 Formal verification of Rust code is an active research area. However, the majority of existing automated verifiers\cite{Prusti,Creusot} are unable to reason about unsafe code. 
 
-\textbf{Kani}\cite{kani} is a model checker for Rust code. It translates Rust program into an intermediate representation(IR) for verification and then invokes CBMC(C Bounded Model Checker)\cite{kroening2023cbmccboundedmodel}, which checks the IR for property violations via symbolic execution and SAT solving. Kani emphasizes soundness over completeness. It requires minimal user annotations and enables push-button verification of single‑threaded safety properties. However, it has limited specification expressiveness compared to deductive verification.   
+\textbf{Kani}\cite{kani} is a model checker for Rust code. It translates Rust program into an intermediate representation(IR) for verification and then invokes CBMC(C Bounded Model Checker)\cite{kroening2023cbmccboundedmodel}, which checks the IR for property violations via symbolic execution and SAT solving. Kani emphasizes soundness over completeness. It requires minimal user annotations and enables push-button verification of single-threaded safety properties. However, it has limited specification expressiveness compared to deductive verification.   
 
 \textbf{RefinedRust}\cite{RefinedRust} aims to produce foundational proofs of Rust code in the Coq proof assistant. It is a semi-automated deductive verifier that removes most of Rustc from the TCB(Trusted Computing Base). Its frontend automatically translates the Rust code into \textbf{Radium}, a formalization of the operational semantics of Rust in Coq. Verification of a simplified \texttt{Vec} implementation takes 22 minutes CPU time on an Apple M1 Max processor due to blow-up caused by the lowering from surface Rust to MIR by Rustc. Currently, it does not support concurrency.    
 
@@ -127,7 +127,7 @@ When the ownership policy upholds, Rust ensures spatial and temporal memory safe
 \subsubsection{The Rust Standard Library}
 Rust's standard library provides essential foundational features and abstractions required for building Rust applications across different environments. It is structured hierarchically into several layers, each designed for different environments and capabilities:
 \begin{itemize}
-        \item \textbf{core} The \texttt{core} crate is the foundation of Rust. It contains the minimal set of language features and traits that work in any environment—even on bare metal without an operating system.
+        \item \textbf{core} The \texttt{core} crate is the foundation of Rust. It contains the minimal set of language features and traits that work in any environment-even on bare metal without an operating system.
         \item \textbf{alloc} The \texttt{alloc} crate builds on core by adding dynamic memory allocation support. It provides heap-based data structures such as \texttt{Box}, \texttt{Vec}, \texttt{String}, and reference-counted pointers (\texttt{Rc}/\texttt{Arc}).
         \item \textbf{std} The \texttt{std} builds on \texttt{core} and \texttt{alloc} to provide OS-dependent features (threads, I/O, networking).
 \end{itemize}
