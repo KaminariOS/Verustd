@@ -71,7 +71,7 @@ huhu8@cs.unc.edu}
 % \end{abstract}
 
 \begin{IEEEkeywords}
-Verus, Rust, Verification 
+Verus, Rust, Standard Library, Memory Safety, Verification 
 \end{IEEEkeywords}
 
 \section{Abstract}
@@ -83,24 +83,24 @@ Rust\cite{matsakis2014rust} is a modern programming language with an affine type
 Some common idioms include:
 \begin{enumerate}
     \item \textbf{Minimize and Isolate}: Keep \texttt{unsafe} blocks small and confined to modules or functions that perform low-level operations. 
-    \item \textbf{Encapsulate Unsafe in Safe Abstractions}: Hide \texttt{unsafe} code behind a public, safe API. 
+    \item \textbf{Encapsulate Unsafe in Safe Abstractions}: Hide \texttt{unsafe} code behind a public, safe API(Application Programming Interface). 
     \item \textbf{Document Invariants and Assumptions}: Clearly state the assumptions(such as pointer validity or aliasing rules). 
 \end{enumerate}
 
 
-The Rust standard library(std) is a prime example of these idioms in action. Internally, it employs many unsafe operations not only for low-level control but also for performance. All public and private APIs of std are well documented. Usually a user only needs to interact with the safe API of std.  
+The Rust standard library(std) is a prime example of these idioms in action. Internally, it employs many unsafe operations not only for low-level control but also for performance. All public and private APIs of std are well documented. Usually a user only needs to interact with the safe public API of std.  
 
 
-Because std underpins the entire Rust ecosystem, ensuring its safety and correctness is paramount. Manual auditing by library maintainers, dynamic testing and incomplete static analysis can reveal the existence of bugs, but are insufficient to prove correctness. On the other hand, deductive verification can prove that the implementation refines the specification.           
+Because std underpins the entire Rust ecosystem, ensuring its safety and correctness is paramount. Manual auditing by library maintainers, dynamic testing and incomplete static analysis may reveal the existence of bugs, but they are insufficient for providing strong guarantees. On the other hand, deductive verification can prove that the implementation refines the specification with completeness.           
 
 
-In the paper, we explore how deductive verification can formally prove the functional correctness of the implementation of the Rust standard library. We take a modular approach: write formal specifications for a module based on its informal documentation and supplement proofs to help the verifier prove the refinement theorem. Specifically, we use the state-of-the-art deductive program verification tool Verus\cite{verus}. 
+In the paper, we explore how deductive verification can formally prove the functional correctness of the implementation of the Rust standard library. We take an incremental and modular approach: write formal specifications for a module based on its informal documentation, starting from simple safety properties to high-level functional correctness, and supplement proofs when the automated verifier gets stuck. Specifically, we use the state-of-the-art Rust verifier Verus\cite{verus}. 
 
 \subsection{Contributions}
 We make the following contributions:
 \begin{itemize}
-        \item We propose an incremental approach to specifying and proving properties of the standard library code.
-        \item We formally verify the functional correctness of the \texttt{push} method implementation of \texttt{BinaryHeap} data structure in std.
+        \item We propose an incremental and modular approach to specifying and proving properties of the standard library code.
+        \item We formally verify the functional correctness of the \texttt{push} method implementation of \texttt{BinaryHeap} data structure in std. The methodology we develop applies to other data stuctures as well.
         \item We explore how formal specification and automated verification can enhance and enrich the public interface of std. 
         \item This project is at \href{https://github.com/KaminariOS/Verustd}{https://github.com/KaminariOS/Verustd}.
 \end{itemize}
