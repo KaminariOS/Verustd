@@ -7,6 +7,25 @@
 \usepackage{graphicx}
 \usepackage{booktabs}
 \usepackage{textcomp}
+\usepackage{tikz}
+\definecolor{coreblue}{RGB}{80,120,240}
+\definecolor{allocgray}{RGB}{120,120,120}
+\definecolor{stdgreen}{RGB}{0,150,0}
+
+\tikzset{
+  box/.style = {
+    draw,
+    thick,
+    inner sep=6pt,
+    font=\ttfamily
+  },
+  core/.style  = {box, draw=coreblue},
+  alloc/.style = {box, draw=allocgray},
+  std/.style   = {box, draw=stdgreen},
+  module/.style= {anchor=west}
+}
+
+\usetikzlibrary{fit,positioning}
 \usepackage{xcolor}
 \usepackage{listings, listings-rust}
 \definecolor{codegreen}{rgb}{0,0.6,0}
@@ -154,11 +173,11 @@ Unwinding conditions in std comments & 397 \\
 Automated deductive verification is a formal method that employs logical inference and an automated theorem prover to mathematically establish the correctness of software, hardware, or protocols against specified properties. Unlike testing, which samples executions, or model checking, which explores finite state spaces, deductive verification employs logical deduction base on Hoare logic to prove system adherence to formal specifications exhaustively. It requires annotating code with preconditions, postconditions, and invariants. An automated deductive verifier generates verification conditions(VC) from the code and annotations automatically and invokes an SMT(satisfiability modulo theories) solver to check the VCs.
 
 \subsection{Verus}
-Verus\cite{verus} is the first deductive Rust verifier that trusts the borrow checker of the Rust compiler and leverages the ownership rules to simplify SMT encoding of verification conditions. Together with other optimizations, Verus generates VCs that are an order or two of magnitude smaller\cite{VerifyingConcurrentSystemsCode} than its precursor Linear Dafny\cite{linearDafny} for complex systems. Similar reduction in verification time is also observed. 
+Verus\cite{verus} is the first deductive Rust verifier that trusts the borrow checker of the Rust compiler and leverages the ownership rules to simplify SMT encoding of verification conditions. Together with other optimizations, Verus generates VCs that are an order or two of magnitude smaller\cite{VerifyingConcurrentSystemsCode} in size than its precursor Linear Dafny\cite{linearDafny} for complex systems. Similar reduction in verification time is also observed. 
 
 Verus's specification and proof language is also based on Rust itself, so it is easier for a Rust programmer to read and write Verus expressions. Ghost code including specifications and proofs is written alongside executable code but erased after compilation. Ghost code can interleave with executable code, convenient for verifying properties at any program point.   
 
-Verus introduces linear ghost types, inspired by the Iris concurrent separation logic\cite{Iris_contributors_Iris} and the affine type system of Rust. Verus does not directly support verification of unsafe code, but it has ghost state and invariant types that can be used to reason about interior mutability, memory permissions and concurrency. In scenarios where multiple parties share mutable access to the same resource in a coordinated manner—thus creating potential unsafe conditions, Verus provides the VerusSync framework, which models these situations as a tokenized state machine.    
+Verus introduces linear ghost types, inspired by the Iris concurrent separation logic\cite{Iris_contributors_Iris} and the affine type system of Rust. Verus does not directly support verification of unsafe code, but it has ghost state and invariant types that can be used to reason about interior mutability, memory permissions and concurrency. In scenarios where multiple parties share mutable access to the same resource in a coordinated manner-thus creating potential unsafe conditions, Verus provides the VerusSync framework, which models these situations as a tokenized state machine.    
 
 Verus supports a comprehensive subset of Rust's language features and has demonstrated scalability in large-scale, complex systems\cite{verus_publications}.
 
@@ -166,11 +185,12 @@ Verus supports a comprehensive subset of Rust's language features and has demons
 Vstd is the "standard library" for Verus. It consists of commonly used specifications, proofs and runtime functionality. Vstd serves as the infrastructure for verification, in the same way that std serves as the infrastructure for execution.     
 
 \section{Threat Model}
-We assume that while an adversary is restricted to writing safe code, they can invoke any safe public standard functions with arbitrary arguments. Although Rust's borrow checker already prevents many common memory safety errors (such as data races and use-after-free), it does not guarantee functional correctness or invariants related to data structure behavior. Consequently, our verification targets a class of attacks in which incorrect library logic might be leveraged to corrupt data or cause unexpected behavior.
+We assume that while an adversary is restricted to writing safe code, they can invoke any safe public standard functions with arbitrary arguments. Although Rust's borrow checker already prevents many common memory safety errors (such as double-free and use-after-free), it does not guarantee functional correctness or invariants related to data structure behavior. Consequently, our verification targets a class of attacks in which incorrect library logic might be leveraged to corrupt data or cause unexpected behavior.
 
 \begin{itemize}
-\item \textbf{Data-Structure Invariant Violations:} An adversary may trigger key ordering violations or disrupt node relationships in a \texttt{BinaryHeap} (e.g., by exploiting an unverified insertion routine that leads to a broken internal structure). If such structural invariants are not formally proven, an attacker could cause lookups or iterations to fail unexpectedly.
-\item \textbf{Potential Concurrency Bugs:} If we pursue partial concurrency verification, adversaries might exploit incomplete synchronization mechanisms or overlooked atomic guarantees. Race conditions could violate internal invariants, allowing inconsistent reads or writes that undermine correctness or even create denial-of-service conditions.
+\item \textbf{Safety Conditions} By default, Verus rules out simple errors including number overflow/underflow, division by zero etc. Unsafe code in std usually has its safety conditions documented alongside the source code. Incorrect usage of unsafe code may lead to UB. 
+\item \textbf{Data Structure Invariant Violations} Since a data structure may process an arbitrary number of elements controlled by the attacker, we need to prove that it is impossible to cause a safety or invariant violation by invoking a safe method of the target data structure.  
+\item \textbf{Potential Bugs from Concurrency or interior mutability} While we do not cover the formal verification of concurrent or interior mutable code in this paper, Verus does supports them. The Verus source code repository contains verification examples of several simplified concurrent or interior mutable data structures in std. Currently, Verus only supports sequentially consistent memory ordering. 
 \end{itemize}
 
 We do not address hardware-level attacks, compiler bugs, or misuse of \texttt{unsafe} Rust blocks external to the data structures being verified. These lie outside our verification scope, as our project focuses on proving correctness within safe Rust and a subset of unsafe Rust by modeling them with axioms. However, ensuring strong functional invariants is an essential step in making Rust standard libraries more robust against adversarial misuse.
