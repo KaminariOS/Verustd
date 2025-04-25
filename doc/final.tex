@@ -74,6 +74,8 @@ huhu8@cs.unc.edu}
 Verus, Rust, Verification 
 \end{IEEEkeywords}
 
+\section{Abstract}
+
 \section{Introduction}
 Rust\cite{matsakis2014rust} is a modern programming language with an affine type system that checks memory safety at compile time. Its memory safety guarantees, fearless concurrency, and zero-cost abstractions are compelling for systems programming, where safety and performance are both critical. For code whose safety cannot be statically checked by the compiler, Rust provides the \texttt{unsafe} keyword to bypass checks. 
 
@@ -499,10 +501,9 @@ We may also require untrusted code to carry proofs of its safety. Verus has a no
 Sometimes, the safety of a system depends on a hidden state machine. The code must follow some kind of protocol to be safe. For example, some functions need to be invoked in a specific order, or some MMIO registers of a device must be accessed following the specification in the datasheet, or after modifying page table entries, the TLB cache needs to be flushed. Out of 240 CVEs of device drivers in the Linux kernel, 72 are due to protocol violation\cite{RFL_security}. Type-state pattern and session types\cite{sessiontype} are proposed for encoding such protocols at zero runtime overhead. Verus ghost state is a more general and straightforward approach to keeping track of abstract metadata of the system.       
 
 \section{Conclusion}
-In this paper, we have presented an incremental deductive verification approach to formally demonstrate the functional correctness of key components of the Rust standard library using the Verus verification framework. Starting from the informal documentation of each module, we systematically derived preconditions, postconditions, loop invariants, and ghost state annotations to bridge the gap between safe Rust type-level guarantees and the deeper semantic properties required for high‐assurance systems.
+In this paper, we have presented an incremental deductive verification approach to formally demonstrate the functional correctness of key components of the Rust standard library using the Verus verification tool. Starting from the informal documentation of each module, we systematically derive preconditions, postconditions, loop invariants, and ghost state annotations to bridge the gap between safe Rust type-level guarantees and the deeper semantic properties required for high‐assurance systems.
 
 Our case studies show that, while initial annotation and proof development requires expertise, Verus scales to non-trivial data structure implementations with manageable annotation overhead. By eliminating informal comments and runtime assertions in favor of machine‐checked contracts, we gain stronger confidence in library invariants and expose previously undocumented safety conditions to both implementers and clients.
-
 
 By establishing a clear methodology and demonstrating its effectiveness in the core Rust std data structures, this work lays the foundation for high-assurance Rust libraries that harden the language’s performance and safety with the rigor of formal verification.
 
