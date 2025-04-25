@@ -216,12 +216,12 @@ To the Rust compiler, std is a special crate. It contains std-only language feat
     }
 \end{lstlisting}
 \subsubsection{Unsafe code}
-Verus does not have direct support for unsafe code, although vstd provides useful abstractions for some unsafe code. Unsafe code is unsafe because the correct usage of it needs to satisfy some unchecked safety conditions. The general approach to tackling unsafeness is to model its safety conditions as preconditions, semantics as postconditions and convert unsafe code into conditionally safe code. The list~\ref{1} shows an example of an unsafe function, and its safety condition in the comments, and the list~\ref{2} is the formally specified version of it.   
+Verus does not have direct support for unsafe code, although vstd provides useful abstractions for some unsafe code. Unsafe code is unsafe because the correct usage of it needs to satisfy some unchecked safety conditions. The general approach to tackling unsafeness is to model its safety conditions as preconditions, semantics as postconditions and convert unsafe code into conditionally safe code. Listing~\ref{1} shows an example of an unsafe function, and its safety condition in the comments, and the list~\ref{2} is the formally specified version of it.   
 
 \subsubsection{Incomplete External Specifications for std in vstd}
 Modules in std often import traits, functions, and types from other modules. Ideally, all modules get verified and expose public specifications for other modules to use. In practice, we limit our verification scope to the current module and make assumptions(external specifications) about other modules. 
 
-Vstd provides external specifications for a basic subset of std. For items not in std, we need to come up with our own external specifications. Not all external items can be handled this way. For example, reasoning of types with interior mutability, raw pointer memory access, and concurrency require adding some linear ghost state to the function signature.  
+Vstd provides external specifications for a basic subset of std. For std items not in vstd, we need to come up with our own external specifications. Not all external items can be handled this way. For example, reasoning of types with interior mutability, raw pointer memory access, and concurrency require adding some linear ghost state to the function signature.  
 
 \section{Evaluation}
 \subsection{Case Study I: \texttt{raw\_vec}}
@@ -299,7 +299,7 @@ Verus already prevents common source of unwinding such as division by zero. It a
  }
 \end{lstlisting}
 
-Currently, std specifies unwinding conditions in doc comments of the function. Table~\ref{tab:assertion_counts} shows the number of those. Rudra\cite{Rudra}, a Rust code static analyzer, reveals an exception safety violation bug\cite{CVE-2020-36317} in std, as shown in the list~\ref{5}. The \texttt{retain} method takes a function pointer as an argument and calls it in the middle of unsafe operations. The problem is the signature of the function pointer \texttt{f} exposes no information about its runtime properties. Even if we disallow unsafe code and ensure \texttt{f} is purely safe, it is not enough. It may panic, never terminate, or overflow the stack. In the above example, if \texttt{f} panics, the memory content of \texttt{self} may not be a valid UTF8 string, which could lead to a memory safety breach because other string APIs operate under the implicit assumption that the same string is encoded in UTF8.  
+Currently, std specifies unwinding conditions in doc comments of the function. Table~\ref{tab:assertion_counts} shows the number of those. Rudra\cite{Rudra}, a static analyzer of Rust code, reveals an exception safety violation bug\cite{CVE-2020-36317} in std, as shown in the list~\ref{5}. The \texttt{retain} method takes a function pointer as an argument and calls it in the middle of unsafe operations. The problem is the signature of the function pointer \texttt{f} exposes no information about its runtime properties. Even if we disallow unsafe code and ensure \texttt{f} is purely safe, it is not enough. It may panic, never terminate, or overflow the stack. In the above example, if \texttt{f} panics, the memory content of \texttt{self} may not be a valid UTF8 string, which could lead to a memory safety breach because other string APIs operate under the implicit assumption that the same string is encoded in UTF8.  
 
 While static analysis tools like Rudra can find safety bugs in Rust at the ecosystem scale automatically, we argue that std is a safety-critical and high-value verification target so preventing bugs in the development phase is more desirable than finding bugs after release. 
 
@@ -470,7 +470,7 @@ fn write_to_raw_array<V>(first: V, second: V)  requires
     ptr_mut_write(new_p , Tracked(&mut pointsToSecond), second);
 }
 \end{lstlisting}
-All ghost codes are erased after compilation, so ghost types have no run-time representation or cost.
+All ghost code is erased after compilation, so ghost types have no run-time representation or cost.
 % \subsubsubsection{Ensuring Stack Safety by Limiting Max Call Depth}
 
 % \subsubsubsection{Ensuring Termination by Limiting Number of Loop Iterations and Recursions}
@@ -494,9 +494,9 @@ Existing work on isolation with Rust follows a non-adversarial model because the
 It is an open research question how formal verification can strengthen the safety guarantees of Rust. 
 Ideally we will have a formally verified Rust compiler like CompCertC so that compiler bugs are eliminated and we only rely on the hardware model. Or at least we need an assembly verifier that proves the generated assembly code retains the memory safety property of safe Rust source code.   
 
-We may also require an untrusted code to carry proofs of its safety. Verus has a no-cheating mode that forbids assumptions. With no cheating mode enabled, the untrusted code must provide proof of its safety to pass verification. Proof-carrying code may be able to squeeze more performance and flexibility out of existing isolation mechanisms and minimize the extralingual runtime required for safety.
+We may also require untrusted code to carry proofs of its safety. Verus has a no-cheating mode that forbids assumptions. With no-cheating mode enabled, the untrusted code must provide proof of its safety to pass verification. Proof-carrying code may be able to squeeze more performance and flexibility out of existing isolation mechanisms and minimize the extralingual runtime required for safety.
 
-Sometimes, the safety of a system depends on a hidden-state machine. The code must follow some kind of protocol to be safe. For example, some functions need to be invoked in a specific order, or some MMIO registers of a device must be accessed following the specification in the datasheet, or after modifying page table entries, the TLB cache needs to be flushed. Out of 240 CVEs of device drivers in the Linux kernel, 72 are due to protocol violation\cite{RFL_security}. Type-state pattern and session types\cite{sessiontype} are proposed for encoding such protocols at zero runtime overhead. Verus ghost state is a more general and straightforward approach to keeping track of abstract metadata of the system.       
+Sometimes, the safety of a system depends on a hidden state machine. The code must follow some kind of protocol to be safe. For example, some functions need to be invoked in a specific order, or some MMIO registers of a device must be accessed following the specification in the datasheet, or after modifying page table entries, the TLB cache needs to be flushed. Out of 240 CVEs of device drivers in the Linux kernel, 72 are due to protocol violation\cite{RFL_security}. Type-state pattern and session types\cite{sessiontype} are proposed for encoding such protocols at zero runtime overhead. Verus ghost state is a more general and straightforward approach to keeping track of abstract metadata of the system.       
 
 \section{Conclusion}
 In this paper, we have presented an incremental deductive verification approach to formally demonstrate the functional correctness of key components of the Rust standard library using the Verus verification framework. Starting from the informal documentation of each module, we systematically derived preconditions, postconditions, loop invariants, and ghost state annotations to bridge the gap between safe Rust type-level guarantees and the deeper semantic properties required for high‐assurance systems.
@@ -508,7 +508,7 @@ By establishing a clear methodology and demonstrating its effectiveness in the c
 
 \section{Who Did What}
 \begin{itemize}
-\item \textbf{Kosumi Chan:} Investigated the background on concurrent separation logic, refined approach to \texttt{BinaryHeap} specifications, and authored the concurrency threat model.
+\item \textbf{Kosumi Chan:} Investigated the background on concurrent separation logic, refined approach to \texttt{BinaryHeap} specifications.
 \item \textbf{Hu Guo:} Explored Verus' use of Rust's affine-type system, practiced Verus examples for implementation of the verification, inspected verification strategy for \texttt{BinaryHeap}.
 \end{itemize}
 % \section{References}
