@@ -93,7 +93,9 @@ huhu8@cs.unc.edu}
 Verus, Rust, Standard Library, Memory Safety, Verification 
 \end{IEEEkeywords}
 
-\section{Abstract}
+\begin{abstract}
+The Rust programming language provides strong memory safety guarantees through a powerful type system, but critical standard library components still contain unsafe code encapsulated within safe abstractions. This paper addresses the challenge of verifying both memory safety and functional correctness in such unsafe implementations, a task beyond the reach of Rust’s usual checks and existing analysis tools. We apply an incremental and modular deductive verification approach to the Rust standard library. We use Verus (an SMT-based proof framework for Rust) to formalize and prove correctness properties. Our methodology involves gradually enriching specifications and proofs for library functions, focusing on verifying the BinaryHeap. Our work demonstrates the feasibility of formally verifying critical Rust libraries and highlights broader implications for high-assurance Rust development.
+\end{abstract}
 
 \section{Introduction}
 Rust\cite{matsakis2014rust} is a modern programming language with an affine type system that checks memory safety at compile time. Its memory safety guarantees, fearless concurrency, and zero-cost abstractions are compelling for systems programming, where safety and performance are both critical. For code whose safety cannot be statically checked by the compiler, Rust provides the \texttt{unsafe} keyword to bypass checks. 
