@@ -1,3 +1,4 @@
+// Code example from Verus offical repo
 use vstd::prelude::*;                // Import Verus standard library preludes
 use vstd::invariant::*;              // Import invariant support for maintaining conditions
 use vstd::cell::*;                   // Import PCell module for verifiable mutable cells
