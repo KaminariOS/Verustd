@@ -8,6 +8,7 @@ use vstd::layout::*;
 use vstd::layout::layout_for_type_is_valid;
 use vstd::set_lib;
 use vstd::arithmetic::div_mod::*;
+
 verus!{
 
 struct MyStruct {
@@ -17,12 +18,10 @@ struct MyStruct {
 
 fn main() {
     let mut s = MyStruct { a: 10, b: 20 };
-    // let a_ref = (&mut s.a) as *mut i32;
-    // let b_ref = &mut s.b;
-    // *a_ref += 1;
-    // *b_ref += 2;
-    // println!("a: {}, b: {}", a_ref, b_ref);
+    // Example for raw pointer usage (commented out)
 }
+
+// External implementation providing a dangling pointer with ghost permissions
 #[verifier::external_body]
 pub fn dangle<T>() -> (pt: (PPtr<T>, Tracked<PointsToRaw>, Tracked<Dealloc>)) 
     ensures 
@@ -34,14 +33,12 @@ pub fn dangle<T>() -> (pt: (PPtr<T>, Tracked<PointsToRaw>, Tracked<Dealloc>))
             provenance: pt.1@.provenance(),
         }),
         pt.0.addr() as int == align_of::<T>() as int,
-        // pt.0@.metadata == Metadata::Thin,
-        // pt.0@.provenance == pt.1@.provenance(),
-    opens_invariants none
-    {
+{
     let pptr = PPtr(align_of::<T>(), PhantomData);
     (pptr, Tracked::assume_new(), Tracked::assume_new())
 }
 
+// External function returning an aligned dangling pointer
 #[verifier::external_body]
 pub fn dangle_aligned(align: usize) -> (pt: (PPtr<u8>, Tracked<PointsToRaw>, Tracked<Dealloc>)) 
     requires is_power_2(align as int)
@@ -54,18 +51,17 @@ pub fn dangle_aligned(align: usize) -> (pt: (PPtr<u8>, Tracked<PointsToRaw>, Tra
             provenance: pt.1@.provenance(),
         }),
         pt.0.addr() as int == align as int,
-        // pt.0@.metadata == Metadata::Thin,
-        // pt.0@.provenance == pt.1@.provenance(),
-    opens_invariants none
-    {
+{
     let pptr = PPtr(align, PhantomData); 
     (pptr, Tracked::assume_new(), Tracked::assume_new())
 }
 
+// Specification function for size limit checks to ensure valid memory layouts
 spec fn size_limit_for_valid_layout<V>(num: nat) -> bool {
     num * core::mem::size_of::<V>() <= isize::MAX as int - (isize::MAX as int % core::mem::align_of::<V>() as int)        
 }
 
+// Proof that address and size maintain alignment requirements
 proof fn address_add_align(addr: usize, size: usize, alignment: usize)
     requires
         alignment > 0,
@@ -75,21 +71,18 @@ proof fn address_add_align(addr: usize, size: usize, alignment: usize)
         (addr + size) % (alignment as int) == 0,
 {
     broadcast use lemma_mod_adds;
-    // vstd::arithmetic::div_mod::lemma_mod_adds(addr as int, size as int, alignment as int);
 }
 
-// A pedagogical example showcasing the usage of PointsToRaw ghost permission
+// Example demonstrating memory allocation and manipulation using ghost permissions
 fn write_to_raw_array<V>(first: V, second: V)  requires 
                     core::mem::size_of::<V>() != 0, 
                     size_limit_for_valid_layout::<V>(2)
 {
-    // This is an assumption that means 
-    // we trust the Rust compiler for the layout of type V to be valid
     layout_for_type_is_valid::<V>();
     let size = core::mem::size_of::<V>();
     let align = core::mem::align_of::<V>();
-    // p is the actual pointer returned by the allocator while points_to_raw and dealloc are ghost.
-    // points_to_raw represents the permission to access the memory region pointed to by p 
+
+    // Allocate memory with ghost tracking for permissions
     let (p, Tracked(points_to_raw), Tracked(dealloc)) = allocate(
                 2 * size,
                 align,
@@ -100,19 +93,18 @@ fn write_to_raw_array<V>(first: V, second: V)  requires
     let tracked mut pointsToFirst;
     let tracked mut pointsToSecond;
     proof {
-        // This should be included in the post condition of layout_for_type_is_valid
         assume(size % align == 0);
         let item_range = set_lib::set_int_range( p as int + size,
             p as int + 2 * size,
         );
-        // We can split and merge memory permissions 
         let tracked (a, b) = points_to_raw.split(item_range);
         pointsToFirst = b;
         pointsToSecond = a;
 
         address_add_align(p as usize, size, align);
     }
-    
+
+    // Write values to allocated memory, ensuring memory safety through ghost permissions
     let tracked mut pointsToFirst = pointsToFirst.into_typed::<V>((p as usize) as usize);
     ptr_mut_write(p as *mut V, Tracked(&mut pointsToFirst), first);
     let provenance = expose_provenance(p);
@@ -121,36 +113,23 @@ fn write_to_raw_array<V>(first: V, second: V)  requires
     ptr_mut_write(new_p , Tracked(&mut pointsToSecond), second);
 }
 
-    // proof fn address(addr: usize, size: usize, alignment: usize) 
-    // requires alignment > 0, size % alignment == 0, addr % alignment == 0, addr < 1000000, size < 1000000, 
-    // ensures (addr + size ) % (alignment as int) == 0
-    // {
-    //     broadcast use vstd::arithmetic::div_mod::lemma_mod_adds;
-    //     assert ((addr + size ) % (alignment as int) == 0) by (nonlinear_arith);    
-    // }
+// Test function for allocation safety and layout validity
+fn test_allocate<V>() {
+    layout_for_type_is_valid::<V>();
+    let size = core::mem::size_of::<V>(); 
+    let align = core::mem::align_of::<V>();
+    assume(2 * size < isize::MAX as int - (isize::MAX as int % align as int));
+    if size != 0 {
+        assert(valid_layout((2 * size) as usize, align));
+        let (p, Tracked(points_to_raw), Tracked(dealloc)) = allocate(
+            2 * size,
+            align,
+        );
 
-
-
-    
-
-    fn test_allocate<V>() {
-        layout_for_type_is_valid::<V>();
-        let size = core::mem::size_of::<V>(); 
-        let align = core::mem::align_of::<V>();
-        assume(2 * size < isize::MAX as int - (isize::MAX as int % align as int));
-        if  size != 0 {
-                    assert(valid_layout((2 * size) as usize, align));
-                    let (p, Tracked(points_to_raw), Tracked(dealloc)) = allocate(
-                        2 * size,
-                        align,
-                    );
-
-                    let (p1, Tracked(points_to_raw_1), Tracked(dealloc_1)) = allocate(
-                        2 * size,
-                        align,
-                    );
-                    // assert(p != p1);
-        }
+        let (p1, Tracked(points_to_raw_1), Tracked(dealloc_1)) = allocate(
+            2 * size,
+            align,
+        );
     }
 }
-
+}
