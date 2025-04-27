@@ -24,6 +24,11 @@ For the main crate
 ```
 verus src/main.rs --extern=verified_lib -L target/debug/deps --import verified_lib=../verified_lib/vl.vir
 ```
+## Technical report
+[Paper link](./doc/final.pdf)
+
+## Google Slides
+[Slides link](https://docs.google.com/presentation/d/1jK3tDHYMTfy9VjzTunskSFhiiWZyaIMGwUaq4xVYIlE/edit?usp=sharing)
 
 ## Proof artifacts
 - [RawVec](./src/alloc/src/raw_vec.rs)
@@ -37,6 +42,7 @@ verus src/main.rs --extern=verified_lib -L target/debug/deps --import verified_l
 - Deref type conversion not supported
 - Comparison operators for non SMT-arith types not supported
 - Insufficient external specification for `std` in `vstd`
+- Supports atomic primitives with only sequential consistency ordering
 - Floating point numbers unsupported
 
 ## Difficulties for verification of `std`
