@@ -58,4 +58,7 @@ pub fn deallocate_type_state(de: Tracked<DeallocTypeState<ToBeDealloced>>)
     Tracked::assume_new()
 }
 
+// Or make dealloc has a ghost state spec fn used(self) -> bool and pass it to alloc with &mut
+// instead
+
 }
