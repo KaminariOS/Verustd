@@ -280,7 +280,7 @@ Verifying the functional correctness is another level of endeavor. The common st
         \item There are usually more than one way to define well-formedness: bottom-up, top-down, iterative, recursive etc. Need to find one that is easy for Verification.
    \end{itemize}
    \item Add preconditions and postconditions to methods of the target struct to describe the semantics of the target method. For example, see listing~\ref{4}.  
-   \item Write proofs to establish the logical connection from preconditions to postconditions. The executable code in the function body can be considered as part of the proof. It is also possible to have proofs without executable code: proof functions in Verus. The most Challenging is part is finding and proving loop invariants.
+   \item Write proofs to establish the logical connection from preconditions to postconditions. The executable code in the function body can be considered as part of the proof. It is also possible to have proofs without executable code: proof functions in Verus. The most challenging part is finding and proving loop invariants.
 \end{enumerate}
 
 Following these steps, we formally verify the \texttt{push} method of the \texttt{BinaryHeap}. Other methods can also be verified similarly. The proof-to-code ratio is about 1:1~\ref{Line count}:
